@@ -2,7 +2,7 @@
 rm(list=ls())
 
 #set the working directory to where the files are stored - !CHANGE THIS TO YOUR OWN DIRECTORY!
-setwd("C:/Users/jflak/OneDrive/AidData/West_Bank/Data")
+setwd("C:/Users/jflak/OneDrive/Github/usaidwestbank_roadsgie/Data/Data_Old")
 
 #needed packages
 library(readxl)
