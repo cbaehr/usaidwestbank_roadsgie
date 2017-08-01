@@ -69,31 +69,109 @@ colnames(x_left) <- c("cell_id", "date.1", "road_name.1",
                       "date.7", "road_name.7",
                       "date.8", "road_name.8")
 
-# #takes out the two columns we need from workable, makes a dataframe from them
-# work_set <- cbind.data.frame(workable$road_name, workable$buffer_ID)
-# colnames(work_set) <- c("road_name", "buffer_ID")
-# work_set <- work_set[!duplicated(work_set), ]
+#extract the geometry from buffer_data and coerce buffer_data to a dataframe
+buffer_geometry <- st_geometry(buffer_data)
+st_geometry(buffer_data) <- NULL
+buffer_geometry <- st_set_geometry(as.data.frame(buffer_data$index), buffer_geometry)
+
+#takes out the two columns we need from buffer_data, makes a dataframe from them
+work_set <- cbind.data.frame(buffer_data$Name, buffer_data$index)
+colnames(work_set) <- c("road_name", "buffer_id")
+
+###Example code of 'fuzzy' matching based on close but not exactly the same names
+# #creates a list with the index of the matching name in the other file
+# matched_list <- amatch(data_roads_df$Name, data_reconcile$Name_INPIIRoadsProject_Line, maxDist = 30)
 # 
-# #loop-ified code to create new dataframes corresponding to the 1-8 columns, rename them accordingly
+# #adds REU_IDs based on the matched list
+# data_roads_df$REU_ID <- as.numeric(matched_list)
+# data_reconcile$REU_ID <- as.numeric(rownames(data_reconcile))
+# 
+# #merges the two files based on REU_ID
+# data_merged <- merge(data_roads_df, data_reconcile, by = "REU_ID")
+
+##The below code uses fuzzy matching to fix the names in work_set and x_left (later x_merged) to be exactly the same
+#creates a list of the unique road names that are in at least one of road_name 1,2,3 etc.
+road_names_list <- unique(c(levels(x_left[["road_name.1"]]), levels(x_left[["road_name.2"]]), levels(x_left[["road_name.3"]]), levels(x_left[["road_name.4"]]), 
+                            levels(x_left[["road_name.5"]]), levels(x_left[["road_name.6"]]), levels(x_left[["road_name.7"]]), levels(x_left[["road_name.8"]])))
+
+#creates a list of the indices of the (fuzzy) matching names in work_set and road_names_list
+matched_list <- amatch(work_set[["road_name"]], road_names_list, maxDist = 50)
+
+#changes the road_names in work_set (originally from buffer_data) to be the names in x_left (originally from poly_raster_data_merge)
+work_set[["road_name"]] <- as.character(road_names_list[matched_list])
+
+
+#loop-ified code to create new dataframes corresponding to the 1-8 columns, rename them accordingly
+for(i in 1:8)
+{
+  assign(paste0("work_set", i), work_set)
+  assign(paste0("work_set", i), setNames(eval(parse(text = paste0("work_set", i))), c(paste0("road_name.", i), paste0("buffer_id.", i))))
+}
+
+#loop-ified code to merge the work_sets into the x_left dataframe (creating x_merged) to put in the buffer_IDs for each column 1-8
+x_merged <- x_left
+x_merged$row_num <- 1:nrow(x_merged)
+for(i in 1:8)
+{
+  x_merged <- join(x = x_merged, y = eval(as.name(paste0("work_set", i))), by = paste0("road_name.", i), type = "left")
+}
+
+#loop-ified code to change the date columns from factor to character format
+for(i in 1:8)
+{
+  x_merged[, paste0("date.", i)] <- as.character(x_merged[, paste0("date.", i)])
+}
+
+#loop-ified code to create a 9999 date marker for each date that is "NA" but has a road_name - marker is 9999-01-0x
+for(i in 1:8)
+{
+  x_merged[paste0("date.", i)][is.na(x_merged[paste0("date.", i)]) & !is.na(x_merged[paste0("road_name.", i)])] <- paste0("9999-01-0", i)
+}
+
+# & !is.na(x_merged[paste0("road_name.", i)])
+
+# #loop-ified code to change the 9999 markers that indicate no project completed yet to "1/x/2020" so that they can be sorted with date functions
 # for(i in 1:8)
 # {
-#   assign(paste0("work_set", i), work_set)
-#   assign(paste0("work_set", i), setNames(eval(parse(text = paste0("work_set", i))), c(paste0("road_name.", i), paste0("buffer_ID.", i))))
+#   x_merged[[paste0("com_data.", i)]][x_merged[[paste0("com_data.", i)]] == "9999"] <- paste0("1/", i, "/9999")
 # }
 # 
-# #loop-ified code to merge the work_sets into the x_left dataframe (creating x_merged) to put in the buffer_IDs for each column 1-8
-# x_merged <- x_left
-# x_merged$row_num <- 1:nrow(x_merged)
+# #loop-ified code to change the date variable columns to date format for easier manipulation
 # for(i in 1:8)
 # {
-#   x_merged <- join(x = x_merged, y = eval(as.name(paste0("work_set", i))), by = paste0("road_name.", i), type = "left")
+#   x_merged[[paste0("com_data.", i)]] <- as.Date(x_merged[[paste0("com_data.", i)]], format = "%m/%d/%Y", origin = "01/01/1900")
 # }
 # 
-# #loop-ified code to change the date columns from factor to character format
+# #creates the treatment date column
+# x_merged$com_data.treat <- pmin(x_merged$com_data.1, x_merged$com_data.2, x_merged$com_data.3, x_merged$com_data.4,
+#                                 x_merged$com_data.5, x_merged$com_data.6, x_merged$com_data.7, x_merged$com_data.8, na.rm = TRUE)
+# 
+# #loop-ified code to create a variable "treat_col" which contains the number of the treatment column (1-8)
 # for(i in 1:8)
 # {
-#   x_merged[, paste0("com_data.", i)] <- as.character(x_merged[, paste0("com_data.", i)])
+#   x_merged[["treat_col"]][x_merged[["com_data.treat"]] == x_merged[[paste0("com_data.", i)]]] <- i
 # }
+# 
+# #loop-ified code to change the road name columns from factor to character format
+# for(i in 1:8)
+# {
+#   x_merged[[paste0("road_name.", i)]] <- as.character(x_merged[[paste0("road_name.", i)]])
+# }
+# 
+# #loop-ified code to create the treatment road_name column
+# for(i in 1:8)
+# {
+#   x_merged[["road_name.treat"]][x_merged[["treat_col"]] == i] <- x_merged[[paste0("road_name.", i)]][x_merged[["treat_col"]] == i]
+# }
+# 
+# #loop-ified code to create the treatment buffer_ID
+# for(i in 1:8)
+# {
+#   x_merged[["buffer_ID.treat"]][x_merged[["treat_col"]] == i] <- x_merged[[paste0("buffer_ID.", i)]][x_merged[["treat_col"]] == i]
+# }
+
+
+
 
 
 
