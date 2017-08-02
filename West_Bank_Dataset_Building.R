@@ -164,11 +164,28 @@ for(i in temp_col_list)
 }
 x_merged <- x_merged[, final_col_list]
 
-#merge the covariates into x_merged
-merge_wb_cells <- read.csv("merge_westbank_cells.csv")
-x_merged[["cell_id"]] <- as.numeric(as.character(x_merged[["cell_id"]]))
-x_merged <- join(x = x_merged, y = merge_wb_cells, by = "cell_id", type = "inner")
 
+##The below code uses fuzzy matching to fix the names in inpii_data and x_merged to be exactly the same
+#road_names_list was created earlier for the prior fuzzy matching/replacement
+
+#creates a list of the indices of the (fuzzy) matching names in work_set and road_names_list
+matched_list <- amatch(inpii_data[["Name_INPIIRoadsProject_Line"]], road_names_list, maxDist = 50)
+
+#changes the road_names in work_set (originally from buffer_data) to be the names in x_left (originally from poly_raster_data_merge2)
+inpii_data[["Name_INPIIRoadsProject_Line"]] <- as.character(road_names_list[matched_list])
+
+
+#changes inpii_data column "Name_INPIIRoadsProject_Line" to "road_name.treat" so that inpii_data can be merged with x_merged
+names(inpii_data)[names(inpii_data) == "Name_INPIIRoadsProject_Line"] <- "road_name.treat"
+
+#merge inpii_data into x_merged
+x_merged <- join(x = x_merged, y = inpii_data, by = "road_name.treat", type = "left")
+
+# #merge the covariates into x_merged
+# merge_wb_cells <- read.csv("merge_westbank_cells.csv")
+# x_merged[["cell_id"]] <- as.numeric(as.character(x_merged[["cell_id"]]))
+# x_merged <- join(x = x_merged, y = merge_wb_cells, by = "cell_id", type = "inner")
+# 
 # #adds the geometry back into x_merged, making it an sf object again
 # x_geo_col <- st_geometry(x_geometry)
 # x_merged <- st_set_geometry(x_merged, x_geo_col)
