@@ -9,6 +9,7 @@ library(sf)
 library(readxl)
 library(stringdist)
 library(plyr)
+library(multilevelMatching)
 
 ##Loads old data (just for viewing if necessary), the "x" and "workable" data
 #loads "workable" and "x" dataframes
@@ -167,6 +168,12 @@ for(i in temp_col_list)
 x_merged <- x_merged[, final_col_list]
 
 
+#fixes ACTUAL_COM column in inpii_data to match the rest of the columns and not be in the (off by 2 days) excel numeric format
+inpii_data[["ACTUAL_COM"]][inpii_data[["ACTUAL_COM"]] == 9999] <- NA
+inpii_data$ACTUAL_COM <- as.Date(inpii_data$ACTUAL_COM, format = "%Y-%m-%d", origin = "1899-12-30")
+inpii_data[["ACTUAL_COM"]][is.na(inpii_data[["ACTUAL_COM"]])] <- "9999-01-01"
+
+
 ##The below code uses fuzzy matching to fix the names in inpii_data and x_merged to be exactly the same
 #road_names_list was created earlier for the prior fuzzy matching/replacement
 
@@ -182,6 +189,13 @@ names(inpii_data)[names(inpii_data) == "Name_INPIIRoadsProject_Line"] <- "road_n
 
 #merge inpii_data into x_merged
 x_merged <- join(x = x_merged, y = inpii_data, by = "road_name.treat", type = "left")
+
+
+#rename some of the covariates that we are using for the matching to more typical names (e.g. Pop, slope, elevation, etc.)
+#also create some new columns for the pretrends that we need, with typical names (e.g. Pop, slope, elevation, etc.)
+# code goes here
+
+
 
 #merge the covariates into x_merged (note: all cell_ids should match, leaving the same 4449 observations - if it doesn't look for errors)
 merge_wb_cells <- read.csv("merge_westbank_cells.csv")
@@ -219,6 +233,10 @@ for(i in 1:59)
 total_diff <- sum(compare_old_new["diff_name"])
 
 
+#Viewing some of the datasets
+# View(merge_wb_cells[1:100])
+# View(merge_wb_cells[101:200])
+# View(merge_wb_cells[201:275])
 
 
 ###Start of code related to PSM matching with multilevelMatching package###
@@ -254,16 +272,15 @@ total_diff <- sum(compare_old_new["diff_name"])
 
 ##test multilevelGPSMatch, with sample data
 #multilevelGPSMatch.results <- multilevelGPSMatch(Y = Y_sample, W = W_sample, X = X_sample, Trimming = FALSE, GPSM="multinomiallogisticReg")
-#multilevelMatchX()
 
-# #creating "real" Y, W, and X
-# Y_real <- x_merged["viirs_ntl_yearly.2016.mean"]
-# W_real <- x_merged["buffer_id.treat"]
-# X_real <- matrix(data = c(x_merged[["dist_to_water.na.mean"]], x_merged[["ltdr_avhrr_yearly_ndvi.2016.mean"]]), nrow = 4449, ncol = 2)
-# 
-# 
-# ##multilevelGPSMatch on actual data
-# multilevelGPSMatch.results <- multilevelGPSMatch(Y = Y_real, W = W_real, X = X_real, Trimming = FALSE, GPSM = "multinomiallogisticReg")
+#creating "real" Y, W, and X
+Y_real <- x_merged[["viirs_ntl_yearly.2016.mean"]]
+W_real <- x_merged[["date.treat.y"]]
+X_real <- matrix(data = c(x_merged[["dist_to_water.na.mean"]], x_merged[["ltdr_avhrr_yearly_ndvi.2016.mean"]]), nrow = 4449, ncol = 2)
+
+
+##multilevelGPSMatch on actual data
+multilevelGPSMatch.results <- multilevelGPSMatch(Y = Y_real, W = W_real, X = X_real, Trimming = FALSE, GPSM = "multinomiallogisticReg")
 
 
 
