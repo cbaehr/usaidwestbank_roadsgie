@@ -10,7 +10,10 @@ library(sf)
 library(readxl)
 library(stringdist)
 library(plyr)
+library(devtools)
+devtools::install_github("shuyang1987/multilevelMatching")
 library(multilevelMatching)
+
 
 ##Loads old data (just for viewing if necessary), the "x" and "workable" data
 #loads "workable" and "x" dataframes
