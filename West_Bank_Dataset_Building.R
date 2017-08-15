@@ -3,6 +3,7 @@ rm(list=ls())
 
 #set the working directory to where the files are stored - !CHANGE THIS TO YOUR OWN DIRECTORY!
 setwd("C:/Users/jflak/OneDrive/Github/usaidwestbank_roadsgie/Data")
+setwd("/Users/rbtrichler/Documents/AidData/Git Repos/usaidwestbank_roadsgie/Data")
 
 #needed packages
 library(sf)
