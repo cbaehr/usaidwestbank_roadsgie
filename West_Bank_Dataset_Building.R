@@ -195,14 +195,36 @@ names(inpii_data)[names(inpii_data) == "Name_INPIIRoadsProject_Line"] <- "road_n
 x_merged <- join(x = x_merged, y = inpii_data, by = "road_name.treat", type = "left")
 
 
-#rename some of the covariates that we are using for the matching to more typical names (e.g. Pop, slope, elevation, etc.)
-#also create some new columns for the pretrends that we need, with typical names (e.g. Pop, slope, elevation, etc.)
-# code goes here
-
-
+#Read in the covariate extract from geoquery and rename variables in preparation for merge
+merge_wb_cells <- read.csv("merge_westbank_cells.csv")
+#rename covariate columns for use in analytical models
+#remove ".mean" at end of covariates
+colnames(merge_wb_cells) <- gsub(".mean", "", colnames(merge_wb_cells), fixed=TRUE)
+colnames(merge_wb_cells) <- gsub(".na", "", colnames(merge_wb_cells), fixed=TRUE)
+#rename
+colnames(merge_wb_cells) <- sub("dist_to_water","waterdist",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("dist_to_groads","roaddist",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("srtm_elevation_500m","elevation",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("srtm_slope_500m","slope",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("accessibility_map","urbtravtime",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("gpw_v[0-9]_density.","pop_",colnames(merge_wb_cells))
+#max ndvi values from LTDR AVHRR
+colnames(merge_wb_cells) <- sub("ltdr_avhrr_yearly_ndvi.","maxl_",colnames(merge_wb_cells))
+#viirs ntl
+colnames(merge_wb_cells) <- sub("ntl_yearly.","",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("ntl_monthly.","",colnames(merge_wb_cells))
+#dmsp ntl
+colnames(merge_wb_cells) <- sub("v4composites_calibrated.","dmsp_",colnames(merge_wb_cells))
+#temp
+colnames(merge_wb_cells) <- sub("udel_air_temp_v4_01_yearly_mean.","MeanT_",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("udel_air_temp_v4_01_yearly_min.","MinT_",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("udel_air_temp_v4_01_yearly_max.","MaxT_",colnames(merge_wb_cells))
+#precip
+colnames(merge_wb_cells) <- sub("udel_precip_v4_01_yearly_mean.","MeanP_",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("udel_precip_v4_01_yearly_min.","MinP_",colnames(merge_wb_cells))
+colnames(merge_wb_cells) <- sub("udel_precip_v4_01_yearly_max.","MaxP_",colnames(merge_wb_cells))
 
 #merge the covariates into x_merged (note: all cell_ids should match, leaving the same 4449 observations - if it doesn't look for errors)
-merge_wb_cells <- read.csv("merge_westbank_cells.csv")
 x_merged[["cell_id"]] <- as.numeric(as.character(x_merged[["cell_id"]]))
 x_merged <- join(x = x_merged, y = merge_wb_cells, by = "cell_id", type = "inner")
 # 
@@ -212,6 +234,8 @@ x_merged <- join(x = x_merged, y = merge_wb_cells, by = "cell_id", type = "inner
 # 
 # #saves the finished merged shapefile
 # st_write(x_merged, "x_merged.shp")
+
+#also create some new columns for the pretrends that we need, with typical names (e.g. Pop, slope, elevation, etc.)
 
 
 ###Start of code to compare the old and new data
