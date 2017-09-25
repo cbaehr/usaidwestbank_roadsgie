@@ -13,14 +13,16 @@ library(plyr)
 library(devtools)
 devtools::install_github("shuyang1987/multilevelMatching")
 library(multilevelMatching)
+# devtools::install_github("itpir/SCI@master")
+# library(SCI)
 
 
-##Loads old data (just for viewing if necessary), the "x" and "workable" data
-#loads "workable" and "x" dataframes
-#load("Data_Old/WB_Question.RData")
-load("Data_Old/WB_wide.RData")
-#creates x_old from the old x file
-old_x <- x
+# ##Loads old data (just for viewing if necessary), the "x" and "workable" data
+# #loads "workable" and "x" dataframes
+# #load("Data_Old/WB_Question.RData")
+# load("Data_Old/WB_wide.RData")
+# #creates x_old from the old x file
+# old_x <- x
 
 #reads the data from the files
 shpfile <- "poly_raster_data_merge2.shp"
@@ -33,7 +35,14 @@ inpii_data <- read_excel("INPIICSV_RoadsShapefile_Reconcile _comments_clean.xlsx
 x_geometry <- st_geometry(x)
 st_geometry(x) <- NULL
 x_geometry <- st_set_geometry(as.data.frame(x$cell_id), x_geometry)
- 
+
+#merge in distance from each cell to road segment for which it falls within buffer
+distroad <- read.csv("cell_dist_extract.csv")
+distroad_short <- distroad[,-grep("date",colnames(distroad))]
+distroad_short <- distroad_short[,-grep("Name",colnames(distroad_short))]
+x <- merge(x, distroad_short, by="cell_id")
+
+
 #changes "Name" columns in x to "road_name" columns
 colnames(x) <- gsub("Name", "road_name", colnames(x))
 
@@ -42,33 +51,43 @@ colnames(x) <- gsub("_([0-9])", ".\\1", colnames(x))
 
 #creates separate date and road_name dataframes, deletes the other respective variable from the dataframes
 x_road_name <- x[, -grep("date", colnames(x))]
+x_road_name <- x_road_name[, -grep("dist", colnames(x_road_name))]
+
 x_date <- x[, -grep("road_name", colnames(x))]
+x_date <- x_date[, -grep("dist", colnames(x_date))]
+
+x_dist <- x[,-grep("date",colnames(x))]
+x_dist <- x_dist[,-grep("road_name",colnames(x_dist))]
 
 #shifts the data left in each dataframe so that the rightmost columns are all NAs, and renames the colnames to the original names
-x_date_left = as.data.frame(t(apply(x_date, 1, function(x) { return(c(x[!is.na(x)],x[is.na(x)]) )} )))
-colnames(x_date_left) <- colnames(x_date)
 x_road_name_left = as.data.frame(t(apply(x_road_name, 1, function(x) { return(c(x[!is.na(x)],x[is.na(x)]) )} )))
 colnames(x_road_name_left) <- colnames(x_road_name)
 
-#Merges the two left-shifted dataframes and orders the columns at the same time - also deletes all columns 9 and greater (they're all NAs)
-x_left <- cbind.data.frame(x_date_left$cell_id, x_date_left$date.1, x_road_name_left$road_name.1,
-                           x_date_left$date.2, x_road_name_left$road_name.2,
-                           x_date_left$date.3, x_road_name_left$road_name.3,
-                           x_date_left$date.4, x_road_name_left$road_name.4,
-                           x_date_left$date.5, x_road_name_left$road_name.5,
-                           x_date_left$date.6, x_road_name_left$road_name.6,
-                           x_date_left$date.7, x_road_name_left$road_name.7,
-                           x_date_left$date.8, x_road_name_left$road_name.8)
+x_date_left = as.data.frame(t(apply(x_date, 1, function(x) { return(c(x[!is.na(x)],x[is.na(x)]) )} )))
+colnames(x_date_left) <- colnames(x_date)
+
+x_dist_left = as.data.frame(t(apply(x_dist, 1, function(x) { return(c(x[!is.na(x)],x[is.na(x)]) )} )))
+colnames(x_dist_left) <- colnames(x_dist)
+
+#Merges the three left-shifted dataframes and orders the columns at the same time - also deletes all columns 9 and greater (they're all NAs)
+x_left <- cbind.data.frame(x_date_left$cell_id, x_date_left$date.1, x_road_name_left$road_name.1,x_dist_left$dist.1,
+                           x_date_left$date.2, x_road_name_left$road_name.2, x_dist_left$dist.2,
+                           x_date_left$date.3, x_road_name_left$road_name.3, x_dist_left$dist.3,
+                           x_date_left$date.4, x_road_name_left$road_name.4, x_dist_left$dist.4,
+                           x_date_left$date.5, x_road_name_left$road_name.5, x_dist_left$dist.5,
+                           x_date_left$date.6, x_road_name_left$road_name.6, x_dist_left$dist.6,
+                           x_date_left$date.7, x_road_name_left$road_name.7, x_dist_left$dist.7,
+                           x_date_left$date.8, x_road_name_left$road_name.8, x_dist_left$dist.8)
 
 #renames the colnames to the original names
-colnames(x_left) <- c("cell_id", "date.1", "road_name.1",
-                      "date.2", "road_name.2",
-                      "date.3", "road_name.3",
-                      "date.4", "road_name.4",
-                      "date.5", "road_name.5",
-                      "date.6", "road_name.6",
-                      "date.7", "road_name.7",
-                      "date.8", "road_name.8")
+colnames(x_left) <- c("cell_id", "date.1", "road_name.1","dist.1",
+                      "date.2", "road_name.2","dist.2",
+                      "date.3", "road_name.3","dist.3",
+                      "date.4", "road_name.4","dist.4",
+                      "date.5", "road_name.5","dist.5",
+                      "date.6", "road_name.6","dist.6",
+                      "date.7", "road_name.7","dist.7",
+                      "date.8", "road_name.8","dist.8")
 
 #extract the geometry from buffer_data and coerce buffer_data to a dataframe
 buffer_geometry <- st_geometry(buffer_data)
@@ -226,8 +245,41 @@ colnames(merge_wb_cells) <- sub("udel_precip_v4_01_yearly_max.","MaxP_",colnames
 
 #merge the covariates into x_merged (note: all cell_ids should match, leaving the same 4449 observations - if it doesn't look for errors)
 x_merged[["cell_id"]] <- as.numeric(as.character(x_merged[["cell_id"]]))
-x_merged <- join(x = x_merged, y = merge_wb_cells, by = "cell_id", type = "inner")
-# 
+x_merged1 <- join(x = x_merged, y = merge_wb_cells, by = "cell_id", type = "inner")
+
+
+#merge in monthly ndvi
+ndvi<-read.csv("merge_westbank_cells_monthlyndvi.csv")
+ndvi_max <- ndvi[,-(2:62)]
+ndvi_mean <- ndvi[,-(63:122)]
+ndvi_mean <-ndvi_mean[,-grep("(date_59)",names(ndvi_mean))]
+#rename vars
+colnames(ndvi_max)<-sub("ltdr_avhrr_monthly_ndvi.","maxl_",colnames(ndvi_max))
+colnames(ndvi_max) <- gsub(".max", "", colnames(ndvi_max), fixed=TRUE)
+colnames(ndvi_mean)<-sub("ltdr_avhrr_monthly_ndvi.","meanl_",colnames(ndvi_mean))
+colnames(ndvi_mean) <- gsub(".mean", "", colnames(ndvi_mean), fixed=TRUE)
+#merge
+x_merged2 <- join(x=x_merged1, y=ndvi_max, by="cell_id",type ="inner")
+x_merged3 <- join (x=x_merged2, y=ndvi_mean, by="cell_id",type="inner")
+
+
+
+
+
+
+
+##merge in municipality info at cell level
+# read in muni data and drop extra columns
+muni_shp <- "cells_localities_join.shp"
+muni <- st_read(muni_shp)
+muni <- muni[,-(2:119)]
+#merge
+x_merged <- join(x=x_merged, y=muni, by="cell_id", type)
+
+
+#exclude cells that fall outside of West Bank admin boundaries
+
+
 # #adds the geometry back into x_merged, making it an sf object again
 # x_geo_col <- st_geometry(x_geometry)
 # x_merged <- st_set_geometry(x_merged, x_geo_col)
@@ -235,7 +287,6 @@ x_merged <- join(x = x_merged, y = merge_wb_cells, by = "cell_id", type = "inner
 # #saves the finished merged shapefile
 # st_write(x_merged, "x_merged.shp")
 
-#also create some new columns for the pretrends that we need, with typical names (e.g. Pop, slope, elevation, etc.)
 
 
 ###Start of code to compare the old and new data
