@@ -11,6 +11,7 @@ library(readxl)
 library(stringdist)
 library(plyr)
 library(devtools)
+library(maptools)
 devtools::install_github("shuyang1987/multilevelMatching")
 library(multilevelMatching)
 # devtools::install_github("itpir/SCI@master")
@@ -254,7 +255,6 @@ colnames(merge_wb_cells) <- sub("udel_precip_v4_01_yearly_max.","MaxP_",colnames
 x_merged[["cell_id"]] <- as.numeric(as.character(x_merged[["cell_id"]]))
 x_merged1 <- join(x = x_merged, y = merge_wb_cells, by = "cell_id", type = "inner")
 
-
 #merge in monthly ndvi
 ndvi<-read.csv("merge_westbank_cells_monthlyndvi.csv")
 ndvi_max <- ndvi[,-(2:62)]
@@ -266,25 +266,36 @@ colnames(ndvi_max) <- gsub(".max", "", colnames(ndvi_max), fixed=TRUE)
 colnames(ndvi_mean)<-sub("ltdr_avhrr_monthly_ndvi.","meanl_",colnames(ndvi_mean))
 colnames(ndvi_mean) <- gsub(".mean", "", colnames(ndvi_mean), fixed=TRUE)
 #merge
-x_merged2 <- join(x=x_merged1, y=ndvi_max, by="cell_id",type ="inner")
-x_merged3 <- join (x=x_merged2, y=ndvi_mean, by="cell_id",type="inner")
+ndvi_monthly <- merge(ndvi_max, ndvi_mean, by="cell_id")
+x_merged2 <- join(x=x_merged1, y=ndvi_monthly, by="cell_id",type ="inner")
 
 
+##Drop cells that fall outside of West Bank admin boundaries
+#read in file, convert to dataframe, and create column to identify cells once merged into larger dataset
+exclude <- st_read("buffercells_nonWestBank.shp")
+exclude <- as.data.frame(exclude)
+exclude$excl_check <- 1
+#exclude everything but id and excl_check column 
+exclude_ids<-exclude[,-(2:120)]
+#merge into x_merged 
+x_merged3 <- join (x=x_merged2, y=exclude_ids, by="cell_id",type="full")
+x_merged3$excl <- 0
+x_merged3$excl[which(x_merged3$excl_check==1)]<-1
 
-
-
-
+#drop out cells that fall outside of West Bank border (where excl_check=1)
+#should be 4132 cells remaining
+x_merged4 <- x_merged3[(x_merged3$excl==0),]
 
 ##merge in municipality info at cell level
 # read in muni data and drop extra columns
-muni_shp <- "cells_localities_join.shp"
-muni <- st_read(muni_shp)
+muni_shp <- st_read("cells_localities_join.shp")
+muni<-as.data.frame(muni_shp)
+#drop out road segment info and just preserve muni info
 muni <- muni[,-(2:119)]
+muni <- muni[,-grep("geometry",names(muni))]
 #merge
-x_merged <- join(x=x_merged, y=muni, by="cell_id", type)
+x_merged5 <- join(x=x_merged4, y=muni, by="cell_id", type="left")
 
-
-#exclude cells that fall outside of West Bank admin boundaries
 
 
 # #adds the geometry back into x_merged, making it an sf object again
