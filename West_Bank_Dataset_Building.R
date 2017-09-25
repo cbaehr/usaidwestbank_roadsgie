@@ -172,6 +172,12 @@ for(i in 1:8)
   x_merged[["buffer_id.treat"]][x_merged[["treat_col"]] == i] <- x_merged[[paste0("buffer_id.", i)]][x_merged[["treat_col"]] == i]
 }
 
+#loop-ified code to create the treatment road distance
+for(i in 1:8)
+{
+  x_merged[["dist.treat"]][x_merged[["treat_col"]]== i] <- x_merged[[paste0("dist.",i)]][x_merged[["treat_col"]]==i]
+}
+
 #loop-ified code to split the date columns into day, month, year
 temp_col_list <- c("treat", "1", "2", "3", "4", "5", "6", "7", "8")
 for(i in temp_col_list)
@@ -185,7 +191,8 @@ for(i in temp_col_list)
 final_col_list <- c("row_num", "cell_id", "treat_col")
 for(i in temp_col_list)
 {
-  final_col_list <- c(final_col_list, paste0("buffer_id.", i), paste0("road_name.", i), paste0("date.", i),
+  final_col_list <- c(final_col_list, paste0("buffer_id.", i), paste0("road_name.", i),
+                      paste0("dist.",i), paste0("date.", i),
                       paste0("date.", i, ".d"), paste0("date.", i, ".m"), paste0("date.", i, ".y"))
 }
 x_merged <- x_merged[, final_col_list]
