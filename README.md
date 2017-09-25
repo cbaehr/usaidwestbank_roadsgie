@@ -15,6 +15,10 @@ poly_raster_data_merge2.shp - from Tyler (Slack in usaid_westbank_gie)
 
 merge_westbank_cells.csv - from Seth (Slack in usaid_westbank_gie)
 
+merge_westbank_cells_monthlyndvi.csv - from Seth (Slack in usaid_westbank_gie); extract of monthly ndvi values
+
+cell_dist_extract - from Seth (Slack in usaid_westbank_gie); gives distance between each cell and associated road segment
+
 ## Shapefiles (folder)
 
 
