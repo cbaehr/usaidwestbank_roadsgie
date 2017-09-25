@@ -11,7 +11,7 @@ buffer.shp - from spatial_join_apply
 roads_merged.shp - from spatial_join_apply
 spatial_join.shp - from spatial_join_apply
 
-poly_raster_data_merge2.shp - from Seth (Slack in usaid_westbank_gie)
+poly_raster_data_merge2.shp - from Tyler (Slack in usaid_westbank_gie)
 
 merge_westbank_cells.csv - from Seth (Slack in usaid_westbank_gie)
 
@@ -21,6 +21,10 @@ merge_westbank_cells.csv - from Seth (Slack in usaid_westbank_gie)
 INPIIRoadsProjects_Line_modified.shp -- file of 59 INP II road segments (some improved; some yet to be improved) provided by Peter Lister from Black and Veatch (implementing partner); obtained from shared Google Drive folder
 
 Localities_Classifications.shp - provides municipality admin boundaries from the Vulnerability Assessment published in June 2011; provided by the Mission; obtained from shared Google Drive folder
+
+Localities_Classifications_EPSG4326.shp - Localities_Classifications reprojected to EPSG4326 to do spatial join with poly_raster_data_merge2
+
+cells_localities_join.shp - joins municipality info from localities_classifications_epsg4326 with poly_raster_data_merge2, done manually in QGIS, to get municipality info for each cell
 
 WestBankBorder.shp - provides admin border of entire West Bank area; manually clipped from countries.shp file provided by the Mission and obtained from shared Google Drive folder; used to clip grid cells that fall within 5km road buffer but outside of West Bank admin boundaries
 
