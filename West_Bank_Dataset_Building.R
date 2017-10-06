@@ -38,11 +38,12 @@ st_geometry(x) <- NULL
 x_geometry <- st_set_geometry(as.data.frame(x$cell_id), x_geometry)
 
 #merge in distance from each cell to road segment for which it falls within buffer
+#distroad includes name and date (can use to check if matches with "x"), but geometry extracted from "x" so will merge distroad in
 distroad <- read.csv("cell_dist_extract.csv")
 distroad_short <- distroad[,-grep("date",colnames(distroad))]
 distroad_short <- distroad_short[,-grep("Name",colnames(distroad_short))]
-x <- merge(x, distroad_short, by="cell_id")
-
+x1 <- merge(x, distroad_short, by="cell_id")
+x <- x1
 
 #changes "Name" columns in x to "road_name" columns
 colnames(x) <- gsub("Name", "road_name", colnames(x))
@@ -70,7 +71,22 @@ colnames(x_date_left) <- colnames(x_date)
 x_dist_left = as.data.frame(t(apply(x_dist, 1, function(x) { return(c(x[!is.na(x)],x[is.na(x)]) )} )))
 colnames(x_dist_left) <- colnames(x_dist)
 
+# #Double check data shift
+# #numbers of NA should match
+# #should have values in column 8 but not in column 9
+# sum(is.na(x_dist_left$dist.2))
+# sum(is.na(x_road_name_left$road_name.2))
+# sum(is.na(x_dist_left$dist.8))
+# sum(is.na(x_road_name_left$road_name.8))
+# sum(is.na(x_dist_left$dist.9))
+# sum(is.na(x_road_name_left$road_name.9))
+
 #Merges the three left-shifted dataframes and orders the columns at the same time - also deletes all columns 9 and greater (they're all NAs)
+#Must sort components first to be sure rows are in the same order
+x_date_left<-x_date_left[order(x_date_left$cell_id),]
+x_dist_left<-x_dist_left[order(x_dist_left$cell_id),]
+x_road_name_left<-x_road_name_left[order(x_road_name_left$cell_id),]
+
 x_left <- cbind.data.frame(x_date_left$cell_id, x_date_left$date.1, x_road_name_left$road_name.1,x_dist_left$dist.1,
                            x_date_left$date.2, x_road_name_left$road_name.2, x_dist_left$dist.2,
                            x_date_left$date.3, x_road_name_left$road_name.3, x_dist_left$dist.3,
@@ -79,6 +95,7 @@ x_left <- cbind.data.frame(x_date_left$cell_id, x_date_left$date.1, x_road_name_
                            x_date_left$date.6, x_road_name_left$road_name.6, x_dist_left$dist.6,
                            x_date_left$date.7, x_road_name_left$road_name.7, x_dist_left$dist.7,
                            x_date_left$date.8, x_road_name_left$road_name.8, x_dist_left$dist.8)
+#Check column bind by manually looking at a few random cell ids
 
 #renames the colnames to the original names
 colnames(x_left) <- c("cell_id", "date.1", "road_name.1","dist.1",
@@ -124,8 +141,6 @@ for(i in 1:8)
 {
   x_merged <- join(x = x_merged, y = eval(as.name(paste0("work_set", i))), by = paste0("road_name.", i), type = "left")
 }
-
-
 
 #loop-ified code to change the date columns from factor to character format
 for(i in 1:8)
@@ -221,6 +236,7 @@ names(inpii_data)[names(inpii_data) == "Name_INPIIRoadsProject_Line"] <- "road_n
 #merge inpii_data into x_merged
 x_merged <- join(x = x_merged, y = inpii_data, by = "road_name.treat", type = "left")
 
+#Double check that dataset was created correctly!
 
 #Read in the covariate extract from geoquery and rename variables in preparation for merge
 merge_wb_cells <- read.csv("merge_westbank_cells.csv")
@@ -255,7 +271,7 @@ colnames(merge_wb_cells) <- sub("udel_precip_v4_01_yearly_max.","MaxP_",colnames
 x_merged[["cell_id"]] <- as.numeric(as.character(x_merged[["cell_id"]]))
 x_merged1 <- join(x = x_merged, y = merge_wb_cells, by = "cell_id", type = "inner")
 
-#merge in monthly ndvi
+#merge in monthly ndvi (was provided in separate geoquery extract from above file)
 ndvi<-read.csv("merge_westbank_cells_monthlyndvi.csv")
 ndvi_max <- ndvi[,-(2:62)]
 ndvi_mean <- ndvi[,-(63:122)]
@@ -283,7 +299,7 @@ x_merged3$excl <- 0
 x_merged3$excl[which(x_merged3$excl_check==1)]<-1
 
 #drop out cells that fall outside of West Bank border (where excl_check=1)
-#should be 4132 cells remaining
+#should be 4132 cells remaining, same number of vars
 x_merged4 <- x_merged3[(x_merged3$excl==0),]
 
 ##merge in municipality info at cell level
@@ -297,13 +313,30 @@ muni <- muni[,-grep("geometry",names(muni))]
 x_merged5 <- join(x=x_merged4, y=muni, by="cell_id", type="left")
 
 
+#adds the geometry back into x_merged, making it an sf object again
+#first remove cells that fall outside of West Bank admin border using exclude_ids (created earlier)
+x_geometry_excl <- merge (x=x_geometry, y= exclude_ids, by.x="x.cell_id", by.y="cell_id", all=TRUE)
+x_geometry_excl <- x_geometry_excl[is.na(x_geometry_excl$excl_check),]
+x_geo_col <- st_geometry(x_geometry_excl)
+#add geometry back in
+x_merged6 <- st_set_geometry(x_merged5, x_geo_col)
 
-# #adds the geometry back into x_merged, making it an sf object again
-# x_geo_col <- st_geometry(x_geometry)
-# x_merged <- st_set_geometry(x_merged, x_geo_col)
-# 
-# #saves the finished merged shapefile
-# st_write(x_merged, "x_merged.shp")
+##saves the finished merged shapefile
+##NOT WORKING - CHANGES COLUMN NAMES
+#st_write(x_merged6, "x_merged.shp", delete_layer=TRUE)
+
+#Saves most updated form of x_merged
+x_merged <- x_merged6
+
+
+#prep to build monthly panel
+#monthly viirs starts April 2012
+#ndvi monthly
+#pop every 5 years
+#temp and precip end in 2014
+
+
+
 
 
 
