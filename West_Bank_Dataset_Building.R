@@ -362,18 +362,23 @@ View(wb_panel[1:100])
 View(wb_panel[100:200])
 View(wb_panel[180:213])
 wb_panel_ch <- wb_panel[wb_panel$cell_id<305,]
-ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
+ch_vars<-c("cell_id","month","maxl","meanl","viirs")
 wb_panel_ch <- wb_panel_ch[ch_vars]
 wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
 View(wb_reshape_ch[100:200])
 View(wb_reshape_ch[280:380])
 
 #create dichotomous treatment variable
+#create yearmonth treatment values
+wb_panel$date.treat.m<-formatC(wb_panel$date.treat.m, width=2, format="d",flag="0")
 wb_panel$date_treat_ym<-as.numeric(paste(wb_panel$date.treat.y,wb_panel$date.treat.m,sep=""))
-
+#set trt=1 if month is equal to or after date_treat_ym
+wb_panel$trt<-NA
+wb_panel$trt[which(wb_panel$Month<wb_panel$date_treat_ym)]<-0
+wb_panel$trt[which(wb_panel$Month>=wb_panel$date_treat_ym)]<-1
 
 #create slim version for analysis
-wb_panel_slim <- wb_panel[c(11:73,138,161:169,206:213)]
+wb_panel_slim <- wb_panel[c(11:73,138,161:169,206:215)]
 write.csv(wb_panel_slim,"/Users/rbtrichler/Documents/AidData/wb_panel_slim.csv")
 
 
