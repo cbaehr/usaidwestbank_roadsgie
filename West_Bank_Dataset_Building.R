@@ -312,6 +312,9 @@ muni <- muni[,-grep("geometry",names(muni))]
 #merge
 x_merged5 <- join(x=x_merged4, y=muni, by="cell_id", type="left")
 
+#Saves updated form of x_merged as a dataframe
+x_merged <- x_merged5
+
 
 #adds the geometry back into x_merged, making it an sf object again
 #first remove cells that fall outside of West Bank admin border using exclude_ids (created earlier)
@@ -325,19 +328,56 @@ x_merged6 <- st_set_geometry(x_merged5, x_geo_col)
 ##NOT WORKING - CHANGES COLUMN NAMES
 #st_write(x_merged6, "x_merged.shp", delete_layer=TRUE)
 
-#Saves most updated form of x_merged
-x_merged <- x_merged6
 
-
-#prep to build monthly panel
+#----------
+#Convert from wide-form to long-form panel dataset
+#----------
 #monthly viirs starts April 2012
 #ndvi monthly
 #pop every 5 years
 #temp and precip end in 2014
 
+#Drop out unneeded variables
+#For vars that change over time, only using monthly vars starting April 2012 through Dec 2016
+wb_reshape <- x_merged
+wb_reshape1 <- wb_reshape[,-(168:205)]
+wb_reshape2 <- wb_reshape1[,-(225:399)]
+wb_reshape3 <- wb_reshape2[,-(282:284)]
+#wb_reshape1 <- wb_reshape[,-grep("(pop)",names(wb_reshape))]
+wb_reshape <- wb_reshape3
+
+#Order variables chronologically to allow reshape to work properly
+wb_reshape<-wb_reshape[,order(names(wb_reshape))]
+
+#Identify variables where values will change yearly in panel dataset
+MaxL<-grep("maxl_",names(wb_reshape))
+MeanL<-grep("meanl_",names(wb_reshape))
+Viirs<-grep("viirs_",names(wb_reshape))
+
+all_reshape <- c(MaxL,MeanL,Viirs)
+wb_panel <- reshape(wb_reshape, varying=all_reshape, direction="long",idvar="cell_id",sep="_",timevar="Month")
+
+#check panel construction
+View(wb_panel[1:100])
+View(wb_panel[100:200])
+View(wb_panel[180:213])
+wb_panel_ch <- wb_panel[wb_panel$cell_id<305,]
+ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
+wb_panel_ch <- wb_panel_ch[ch_vars]
+wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
+View(wb_reshape_ch[100:200])
+View(wb_reshape_ch[280:380])
+
+#create dichotomous treatment variable
+wb_panel$date_treat_ym<-as.numeric(paste(wb_panel$date.treat.y,wb_panel$date.treat.m,sep=""))
 
 
+#create slim version for analysis
+wb_panel_slim <- wb_panel[c(11:73,138,161:169,206:213)]
+write.csv(wb_panel_slim,"/Users/rbtrichler/Documents/AidData/wb_panel_slim.csv")
 
+
+###SCRATCH
 
 
 ###Start of code to compare the old and new data
