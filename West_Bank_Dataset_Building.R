@@ -160,14 +160,42 @@ for(i in 1:8)
   x_merged[[paste0("date.", i)]] <- as.Date(x_merged[[paste0("date.", i)]], format = "%Y-%m-%d", origin = "1900-01-01")
 }
 
-#creates the treatment date column
-x_merged$date.treat <- pmin(x_merged$date.1, x_merged$date.2, x_merged$date.3, x_merged$date.4,
-                                x_merged$date.5, x_merged$date.6, x_merged$date.7, x_merged$date.8, na.rm = TRUE)
+#creates second treatment date column
+test<-x_merged
+x_merged$date_trt<-apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[1])
+x_merged$date_trt2 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[2])
+x_merged$date_trt3 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[3])
+x_merged$date_trt4 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[4])
+x_merged$date_trt5 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[5])
+x_merged$date_trt6 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[6])
+x_merged$date_trt7 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[7])
+x_merged$date_trt8 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[8])
+# #check: below should return all NAs
+# test$trt9 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[9])
+# count(is.na(test$trt9))
 
-#loop-ified code to create a variable "treat_col" which contains the number of the treatment column (1-8)
+#loop-ified code to change the date variable columns to date format for easier manipulation
 for(i in 1:8)
 {
-  x_merged[["treat_col"]][x_merged[["date.treat"]] == x_merged[[paste0("date.", i)]]] <- i
+  x_merged[[paste0("date.", i)]] <- as.Date(x_merged[[paste0("date.", i)]], format = "%Y-%m-%d", origin = "1900-01-01")
+}
+
+# #creates the treatment date column
+# x_merged$date.treat <- pmin(x_merged$date.1, x_merged$date.2, x_merged$date.3, x_merged$date.4,
+#                                 x_merged$date.5, x_merged$date.6, x_merged$date.7, x_merged$date.8, na.rm = TRUE)
+
+#loop-ified code to create a variable "treat_col" which contains the number of the treatment columns (1-8)
+for(i in 1:8)
+{
+  x_merged[["trt_col"]][x_merged[["date_trt"]] == x_merged[[paste0("date.", i)]]] <- i
+  x_merged[["trt2_col"]][x_merged[["date_trt2"]] == x_merged[[paste0("date.", i)]]] <- i
+  x_merged[["trt3_col"]][x_merged[["date_trt3"]] == x_merged[[paste0("date.", i)]]] <- i
+  x_merged[["trt4_col"]][x_merged[["date_trt4"]] == x_merged[[paste0("date.", i)]]] <- i
+  x_merged[["trt5_col"]][x_merged[["date_trt5"]] == x_merged[[paste0("date.", i)]]] <- i
+  x_merged[["trt6_col"]][x_merged[["date_trt6"]] == x_merged[[paste0("date.", i)]]] <- i
+  x_merged[["trt7_col"]][x_merged[["date_trt7"]] == x_merged[[paste0("date.", i)]]] <- i
+  x_merged[["trt8_col"]][x_merged[["date_trt8"]] == x_merged[[paste0("date.", i)]]] <- i
+
 }
 
 #loop-ified code to change the road name columns from factor to character format
@@ -179,39 +207,47 @@ for(i in 1:8)
 #loop-ified code to create the treatment road_name column
 for(i in 1:8)
 {
-  x_merged[["road_name.treat"]][x_merged[["treat_col"]] == i] <- x_merged[[paste0("road_name.", i)]][x_merged[["treat_col"]] == i]
+  x_merged[["road_name.treat"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("road_name.", i)]][x_merged[["trt_col"]] == i]
 }
 
 #loop-ified code to create the treatment buffer_id
 for(i in 1:8)
 {
-  x_merged[["buffer_id.treat"]][x_merged[["treat_col"]] == i] <- x_merged[[paste0("buffer_id.", i)]][x_merged[["treat_col"]] == i]
+  x_merged[["buffer_id.treat"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("buffer_id.", i)]][x_merged[["trt_col"]] == i]
 }
 
 #loop-ified code to create the treatment road distance
 for(i in 1:8)
 {
-  x_merged[["dist.treat"]][x_merged[["treat_col"]]== i] <- x_merged[[paste0("dist.",i)]][x_merged[["treat_col"]]==i]
+  x_merged[["dist.treat"]][x_merged[["trt_col"]]== i] <- x_merged[[paste0("dist.",i)]][x_merged[["trt_col"]]==i]
+}
+
+#loop-ified code to put the treatment date columns in standard date format for easier manipulation
+temp_col_list <- c("trt", "trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8")
+for(i in temp_col_list)
+{
+  x_merged[[paste0("date_", i)]] <- as.Date(x_merged[[paste0("date_", i)]], format = "%Y-%m-%d", origin = "1900-01-01")
 }
 
 #loop-ified code to split the date columns into day, month, year
-temp_col_list <- c("treat", "1", "2", "3", "4", "5", "6", "7", "8")
+temp_col_list <- c("trt", "trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8")
 for(i in temp_col_list)
 {
-  x_merged[[paste0("date.", i, ".d")]] <- as.numeric(format(x_merged[[paste0("date.", i)]], format = "%d"))
-  x_merged[[paste0("date.", i, ".m")]] <- as.numeric(format(x_merged[[paste0("date.", i)]], format = "%m"))
-  x_merged[[paste0("date.", i, ".y")]] <- as.numeric(format(x_merged[[paste0("date.", i)]], format = "%Y"))
+  x_merged[[paste0("date_", i, "_d")]] = as.numeric(format(x_merged[[paste0("date_", i)]], format = "%d"))
+  x_merged[[paste0("date_", i, "_m")]] = as.numeric(format(x_merged[[paste0("date_", i)]], format = "%m"))
+  x_merged[[paste0("date_", i, "_y")]] = as.numeric(format(x_merged[[paste0("date_", i)]], format = "%Y"))
 }
 
-#loop-ified code to reorder and trim the merged dataset to the columns we want in the correct order
-final_col_list <- c("row_num", "cell_id", "treat_col")
-for(i in temp_col_list)
-{
-  final_col_list <- c(final_col_list, paste0("buffer_id.", i), paste0("road_name.", i),
-                      paste0("dist.",i), paste0("date.", i),
-                      paste0("date.", i, ".d"), paste0("date.", i, ".m"), paste0("date.", i, ".y"))
-}
-x_merged <- x_merged[, final_col_list]
+##SHOULD REORG THIS TO PUT THINGS IN ORDER
+# #loop-ified code to reorder and trim the merged dataset to the columns we want in the correct order
+# final_col_list <- c("row_num", "cell_id", "treat_col")
+# for(i in temp_col_list)
+# {
+#   final_col_list <- c(final_col_list, paste0("buffer_id.", i), paste0("road_name.", i),
+#                       paste0("dist.",i), paste0("date.", i),
+#                       paste0("date.", i, ".d"), paste0("date.", i, ".m"), paste0("date.", i, ".y"))
+# }
+# x_merged <- x_merged[, final_col_list]
 
 
 #fixes ACTUAL_COM column in inpii_data to match the rest of the columns and not be in the (off by 2 days) excel numeric format
@@ -316,13 +352,13 @@ x_merged5 <- join(x=x_merged4, y=muni, by="cell_id", type="left")
 x_merged <- x_merged5
 
 
-#adds the geometry back into x_merged, making it an sf object again
-#first remove cells that fall outside of West Bank admin border using exclude_ids (created earlier)
-x_geometry_excl <- merge (x=x_geometry, y= exclude_ids, by.x="x.cell_id", by.y="cell_id", all=TRUE)
-x_geometry_excl <- x_geometry_excl[is.na(x_geometry_excl$excl_check),]
-x_geo_col <- st_geometry(x_geometry_excl)
-#add geometry back in
-x_merged6 <- st_set_geometry(x_merged5, x_geo_col)
+# #adds the geometry back into x_merged, making it an sf object again
+# #first remove cells that fall outside of West Bank admin border using exclude_ids (created earlier)
+# x_geometry_excl <- merge (x=x_geometry, y= exclude_ids, by.x="x.cell_id", by.y="cell_id", all=TRUE)
+# x_geometry_excl <- x_geometry_excl[is.na(x_geometry_excl$excl_check),]
+# x_geo_col <- st_geometry(x_geometry_excl)
+# #add geometry back in
+# x_merged6 <- st_set_geometry(x_merged5, x_geo_col)
 
 ##saves the finished merged shapefile
 ##NOT WORKING - CHANGES COLUMN NAMES
@@ -334,19 +370,17 @@ x_merged6 <- st_set_geometry(x_merged5, x_geo_col)
 #----------
 #monthly viirs starts April 2012
 #ndvi monthly
-#pop every 5 years
-#temp and precip end in 2014
+#pop every 5 years - can't use since it takes ntl into account
+#temp and precip end in 2014 - can't use those either
 
 #Drop out unneeded variables
 #For vars that change over time, only using monthly vars starting April 2012 through Dec 2016
 wb_reshape <- x_merged
-wb_reshape1 <- wb_reshape[,-(168:205)]
-wb_reshape2 <- wb_reshape1[,-(225:399)]
-wb_reshape3 <- wb_reshape2[,-(282:284)]
-#wb_reshape1 <- wb_reshape[,-grep("(pop)",names(wb_reshape))]
-wb_reshape <- wb_reshape3
+wb_reshape1 <- wb_reshape[,-c(185:216,274:448,506:508)]
+#Update final version of wb_reshape
+wb_reshape <- wb_reshape1
 
-#Order variables chronologically to allow reshape to work properly
+#Order variables by name/time to allow reshape to work properly
 wb_reshape<-wb_reshape[,order(names(wb_reshape))]
 
 #Identify variables where values will change yearly in panel dataset
@@ -370,13 +404,41 @@ View(wb_reshape_ch[280:380])
 
 #create dichotomous treatment variable
 #create yearmonth treatment values
-wb_panel$date.treat.m<-formatC(wb_panel$date.treat.m, width=2, format="d",flag="0")
-wb_panel$date_treat_ym<-as.numeric(paste(wb_panel$date.treat.y,wb_panel$date.treat.m,sep=""))
+wb_panel$date_trt_m<-formatC(wb_panel$date_trt_m, width=2, format="d",flag="0")
+wb_panel$date_trt_ym<-as.numeric(paste(wb_panel$date_trt_y,wb_panel$date_trt_m,sep=""))
 #set trt=1 if month is equal to or after date_treat_ym
 wb_panel$trt<-NA
-wb_panel$trt[which(wb_panel$Month<wb_panel$date_treat_ym)]<-0
-wb_panel$trt[which(wb_panel$Month>=wb_panel$date_treat_ym)]<-1
+wb_panel$trt[which(wb_panel$Month<wb_panel$date_trt_ym)]<-0
+wb_panel$trt[which(wb_panel$Month>=wb_panel$date_trt_ym)]<-1
+View(wb_panel[200:232])
+#create dichotomous treatment variable for multiple treatments (i.e. cell present in more than one buffer)
+#up to 4 or more buffers (to maintain big enough group of cells)
+#format month as 2 digits
+temp_col_list <- c("trt","trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8")
+for(i in temp_col_list)
+{
+  wb_panel[[paste0("date_", i, "_m")]] <- formatC(wb_panel[[paste0("date_", i,"_m")]], width=2,format="d",flag="0")
+  wb_panel[[paste0("date_",i,"_ym")]]<-as.numeric(paste(wb_panel[[paste0("date",i,"_y")]],wb_panel[[paste0("date",i,"_m")]],sep=""))
+  
 
+}
+
+for(i in temp_col_list)
+{
+  wb_panel[[paste0("date_",i,"_ym")]]<-NA
+  wb_panel[[paste0("date_",i,"_ym")]]<-as.numeric(paste(wb_panel[[paste0("date_",i,"_y")]],wb_panel[[paste0("date_",i,"_m")]],sep=""))
+  
+}
+
+as.numeric(paste(wb_panel[[paste0("date",i,"_y")]],wb_panel[[paste0("date",i,"_m")]],sep=""))
+
+
+#set trt2=1 if month is equal to or after date_trt2_ym
+trt_list <-c("trt2","trt3","trt4")
+for(i in trt_list)
+{
+  wb_panel[[paste0("i")]]<-
+}
 #create slim version for analysis
 wb_panel_slim <- wb_panel[c(11:73,138,161:169,206:215)]
 write.csv(wb_panel_slim,"/Users/rbtrichler/Documents/AidData/wb_panel_slim.csv")
@@ -416,3 +478,4 @@ total_diff <- sum(compare_old_new["diff_name"])
 
 
 
+mydata1 = mydata[,grepl("^INC",names(mydata))]
