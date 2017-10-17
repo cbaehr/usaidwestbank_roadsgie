@@ -394,9 +394,9 @@ wb_panel <- reshape(wb_reshape, varying=all_reshape, direction="long",idvar="cel
 #check panel construction
 View(wb_panel[1:100])
 View(wb_panel[100:200])
-View(wb_panel[180:213])
+View(wb_panel[180:230])
 wb_panel_ch <- wb_panel[wb_panel$cell_id<305,]
-ch_vars<-c("cell_id","month","maxl","meanl","viirs")
+ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
 wb_panel_ch <- wb_panel_ch[ch_vars]
 wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
 View(wb_reshape_ch[100:200])
@@ -412,33 +412,27 @@ wb_panel$trt[which(wb_panel$Month<wb_panel$date_trt_ym)]<-0
 wb_panel$trt[which(wb_panel$Month>=wb_panel$date_trt_ym)]<-1
 View(wb_panel[200:232])
 #create dichotomous treatment variable for multiple treatments (i.e. cell present in more than one buffer)
-#up to 4 or more buffers (to maintain big enough group of cells)
+#create from 2 to 8 buffers
 #format month as 2 digits
-temp_col_list <- c("trt","trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8")
+temp_col_list <- c("trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8")
 for(i in temp_col_list)
 {
-  wb_panel[[paste0("date_", i, "_m")]] <- formatC(wb_panel[[paste0("date_", i,"_m")]], width=2,format="d",flag="0")
-  wb_panel[[paste0("date_",i,"_ym")]]<-as.numeric(paste(wb_panel[[paste0("date",i,"_y")]],wb_panel[[paste0("date",i,"_m")]],sep=""))
-  
-
-}
-
-for(i in temp_col_list)
-{
-  wb_panel[[paste0("date_",i,"_ym")]]<-NA
+  #format treatment month as 2 digits
+  wb_panel[[paste0("date_",i, "_m")]] <- formatC(wb_panel[[paste0("date_", i,"_m")]], width=2,format="d",flag="0")
+  #create date in year+month for all treatment columns
   wb_panel[[paste0("date_",i,"_ym")]]<-as.numeric(paste(wb_panel[[paste0("date_",i,"_y")]],wb_panel[[paste0("date_",i,"_m")]],sep=""))
-  
+  #create treatment var for buffers 2-8
+  wb_panel[i]<-NA
+  wb_panel[i]<-ifelse(is.na(wb_panel[[paste0("date_",i,"_ym")]]),0,
+                      ifelse(wb_panel$Month>=wb_panel[[paste0("date_",i,"_ym")]],1,0))
 }
+#check: treatment columns should not have any NAs (should only be 0 or 1)
+#for trt 4, should be =0 for 233,191 obs and =1 for 2333 obs 
+summary(wb_panel$trt4)
+table(wb_panel$trt4)
+table(wb_panel$date_trt4_ym)
 
-as.numeric(paste(wb_panel[[paste0("date",i,"_y")]],wb_panel[[paste0("date",i,"_m")]],sep=""))
 
-
-#set trt2=1 if month is equal to or after date_trt2_ym
-trt_list <-c("trt2","trt3","trt4")
-for(i in trt_list)
-{
-  wb_panel[[paste0("i")]]<-
-}
 #create slim version for analysis
 wb_panel_slim <- wb_panel[c(11:73,138,161:169,206:215)]
 write.csv(wb_panel_slim,"/Users/rbtrichler/Documents/AidData/wb_panel_slim.csv")
