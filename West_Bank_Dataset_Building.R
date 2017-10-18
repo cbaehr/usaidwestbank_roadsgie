@@ -30,7 +30,7 @@ shpfile <- "poly_raster_data_merge2.shp"
 x <- st_read(shpfile)
 buffer_shpfile <- "buffer.shp"
 buffer_data <- st_read(buffer_shpfile)
-inpii_data <- read_excel("INPIICSV_RoadsShapefile_Reconcile _comments_clean.xlsx")
+inpii_data <- read.csv("INPIICSV_RoadsShapefile_Reconcile _comments_clean.csv")
 
 #extract the geometry from x and coerce x to a dataframe
 x_geometry <- st_geometry(x)
@@ -207,19 +207,19 @@ for(i in 1:8)
 #loop-ified code to create the treatment road_name column
 for(i in 1:8)
 {
-  x_merged[["road_name.treat"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("road_name.", i)]][x_merged[["trt_col"]] == i]
+  x_merged[["road_name_trt"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("road_name.", i)]][x_merged[["trt_col"]] == i]
 }
 
 #loop-ified code to create the treatment buffer_id
 for(i in 1:8)
 {
-  x_merged[["buffer_id.treat"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("buffer_id.", i)]][x_merged[["trt_col"]] == i]
+  x_merged[["buffer_id_trt"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("buffer_id.", i)]][x_merged[["trt_col"]] == i]
 }
 
 #loop-ified code to create the treatment road distance
 for(i in 1:8)
 {
-  x_merged[["dist.treat"]][x_merged[["trt_col"]]== i] <- x_merged[[paste0("dist.",i)]][x_merged[["trt_col"]]==i]
+  x_merged[["dist_trt"]][x_merged[["trt_col"]]== i] <- x_merged[[paste0("dist.",i)]][x_merged[["trt_col"]]==i]
 }
 
 #loop-ified code to put the treatment date columns in standard date format for easier manipulation
@@ -434,7 +434,19 @@ table(wb_panel$date_trt4_ym)
 
 
 #create slim version for analysis
-wb_panel_slim <- wb_panel[c(11:73,138,161:169,206:215)]
+
+wb_panel_ch <- wb_panel_ch[ch_vars]
+
+trt<-paste(colnames(wb_panel)[grep("*trt",colnames(wb_panel))])
+id<-paste(colnames(wb_panel)[grep("*_id",colnames(wb_panel))])
+date<-paste(colnames(wb_panel)[grep("*date",colnames(wb_panel))])
+dist<-paste(colnames(wb_panel)[grep("*dist",colnames(wb_panel))])
+road<-paste(colnames(wb_panel)[grep("*road",colnames(wb_panel))])
+extra<-c("Month","maxl","meanl","viirs")
+  
+slimvars<-c(trt,id,date,dist,road,extra)
+
+wb_panel_slim <- wb_panel[slimvars]
 write.csv(wb_panel_slim,"/Users/rbtrichler/Documents/AidData/wb_panel_slim.csv")
 
 
