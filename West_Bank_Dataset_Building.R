@@ -45,21 +45,21 @@ distroad_short <- distroad_short[,-grep("Name",colnames(distroad_short))]
 x1 <- merge(x, distroad_short, by="cell_id")
 x <- x1
 
-#changes "Name" columns in x to "road_name" columns
-colnames(x) <- gsub("Name", "road_name", colnames(x))
+#changes "Name" columns in x to "road" columns
+colnames(x) <- gsub("Name", "road", colnames(x))
 
-#changes colnames of x to have "." instead of "_" before the number for each column
-colnames(x) <- gsub("_([0-9])", ".\\1", colnames(x))
+# #changes colnames of x to have "." instead of "_" before the number for each column
+# colnames(x) <- gsub("_([0-9])", ".\\1", colnames(x))
 
 #creates separate date and road_name dataframes, deletes the other respective variable from the dataframes
 x_road_name <- x[, -grep("date", colnames(x))]
 x_road_name <- x_road_name[, -grep("dist", colnames(x_road_name))]
 
-x_date <- x[, -grep("road_name", colnames(x))]
+x_date <- x[, -grep("road", colnames(x))]
 x_date <- x_date[, -grep("dist", colnames(x_date))]
 
 x_dist <- x[,-grep("date",colnames(x))]
-x_dist <- x_dist[,-grep("road_name",colnames(x_dist))]
+x_dist <- x_dist[,-grep("road",colnames(x_dist))]
 
 #shifts the data left in each dataframe so that the rightmost columns are all NAs, and renames the colnames to the original names
 x_road_name_left = as.data.frame(t(apply(x_road_name, 1, function(x) { return(c(x[!is.na(x)],x[is.na(x)]) )} )))
@@ -87,25 +87,25 @@ x_date_left<-x_date_left[order(x_date_left$cell_id),]
 x_dist_left<-x_dist_left[order(x_dist_left$cell_id),]
 x_road_name_left<-x_road_name_left[order(x_road_name_left$cell_id),]
 
-x_left <- cbind.data.frame(x_date_left$cell_id, x_date_left$date.1, x_road_name_left$road_name.1,x_dist_left$dist.1,
-                           x_date_left$date.2, x_road_name_left$road_name.2, x_dist_left$dist.2,
-                           x_date_left$date.3, x_road_name_left$road_name.3, x_dist_left$dist.3,
-                           x_date_left$date.4, x_road_name_left$road_name.4, x_dist_left$dist.4,
-                           x_date_left$date.5, x_road_name_left$road_name.5, x_dist_left$dist.5,
-                           x_date_left$date.6, x_road_name_left$road_name.6, x_dist_left$dist.6,
-                           x_date_left$date.7, x_road_name_left$road_name.7, x_dist_left$dist.7,
-                           x_date_left$date.8, x_road_name_left$road_name.8, x_dist_left$dist.8)
+x_left <- cbind.data.frame(x_date_left$cell_id, x_date_left$date_1, x_road_name_left$road_1,x_dist_left$dist_1,
+                           x_date_left$date_2, x_road_name_left$road_2, x_dist_left$dist_2,
+                           x_date_left$date_3, x_road_name_left$road_3, x_dist_left$dist_3,
+                           x_date_left$date_4, x_road_name_left$road_4, x_dist_left$dist_4,
+                           x_date_left$date_5, x_road_name_left$road_5, x_dist_left$dist_5,
+                           x_date_left$date_6, x_road_name_left$road_6, x_dist_left$dist_6,
+                           x_date_left$date_7, x_road_name_left$road_7, x_dist_left$dist_7,
+                           x_date_left$date_8, x_road_name_left$road_8, x_dist_left$dist_8)
 #Check column bind by manually looking at a few random cell ids
 
 #renames the colnames to the original names
-colnames(x_left) <- c("cell_id", "date.1", "road_name.1","dist.1",
-                      "date.2", "road_name.2","dist.2",
-                      "date.3", "road_name.3","dist.3",
-                      "date.4", "road_name.4","dist.4",
-                      "date.5", "road_name.5","dist.5",
-                      "date.6", "road_name.6","dist.6",
-                      "date.7", "road_name.7","dist.7",
-                      "date.8", "road_name.8","dist.8")
+colnames(x_left) <- c("cell_id", "date_1", "road_1","dist_1",
+                      "date_2", "road_2","dist_2",
+                      "date_3", "road_3","dist_3",
+                      "date_4", "road_4","dist_4",
+                      "date_5", "road_5","dist_5",
+                      "date_6", "road_6","dist_6",
+                      "date_7", "road_7","dist_7",
+                      "date_8", "road_8","dist_8")
 
 #extract the geometry from buffer_data and coerce buffer_data to a dataframe
 buffer_geometry <- st_geometry(buffer_data)
@@ -118,8 +118,8 @@ colnames(work_set) <- c("road_name", "buffer_id")
 
 ##The below code uses fuzzy matching to fix the names in work_set and x_left (later x_merged) to be exactly the same
 #creates a list of the unique road names that are in at least one of road_name 1,2,3 etc.
-road_names_list <- unique(c(levels(x_left[["road_name.1"]]), levels(x_left[["road_name.2"]]), levels(x_left[["road_name.3"]]), levels(x_left[["road_name.4"]]), 
-                            levels(x_left[["road_name.5"]]), levels(x_left[["road_name.6"]]), levels(x_left[["road_name.7"]]), levels(x_left[["road_name.8"]])))
+road_names_list <- unique(c(levels(x_left[["road_1"]]), levels(x_left[["road_2"]]), levels(x_left[["road_3"]]), levels(x_left[["road_4"]]), 
+                            levels(x_left[["road_5"]]), levels(x_left[["road_6"]]), levels(x_left[["road_7"]]), levels(x_left[["road_8"]])))
 
 #creates a list of the indices of the (fuzzy) matching names in work_set and road_names_list
 matched_list <- amatch(work_set[["road_name"]], road_names_list, maxDist = 50)
@@ -131,7 +131,7 @@ work_set[["road_name"]] <- as.character(road_names_list[matched_list])
 for(i in 1:8)
 {
   assign(paste0("work_set", i), work_set)
-  assign(paste0("work_set", i), setNames(eval(parse(text = paste0("work_set", i))), c(paste0("road_name.", i), paste0("buffer_id.", i))))
+  assign(paste0("work_set", i), setNames(eval(parse(text = paste0("work_set", i))), c(paste0("road_", i), paste0("buffer_id_", i))))
 }
 
 #loop-ified code to merge the work_sets into the x_left dataframe (creating x_merged) to put in the buffer_IDs for each column 1-8
@@ -139,28 +139,30 @@ x_merged <- x_left
 x_merged$row_num <- 1:nrow(x_merged)
 for(i in 1:8)
 {
-  x_merged <- join(x = x_merged, y = eval(as.name(paste0("work_set", i))), by = paste0("road_name.", i), type = "left")
+  x_merged <- join(x = x_merged, y = eval(as.name(paste0("work_set", i))), by = paste0("road_", i), type = "left")
 }
 
 #loop-ified code to change the date columns from factor to character format
 for(i in 1:8)
 {
-  x_merged[, paste0("date.", i)] <- as.character(x_merged[, paste0("date.", i)])
+  x_merged[, paste0("date_", i)] <- as.character(x_merged[, paste0("date_", i)])
 }
 
 #loop-ified code to create a 9999 date marker for each date that is "NA" but has a road_name - marker is 9999-01-0x
 for(i in 1:8)
 {
-  x_merged[paste0("date.", i)][is.na(x_merged[paste0("date.", i)]) & !is.na(x_merged[paste0("road_name.", i)])] <- paste0("9999-01-0", i)
+  x_merged[paste0("date_", i)][is.na(x_merged[paste0("date_", i)]) & !is.na(x_merged[paste0("road_", i)])] <- paste0("9999-01-0", i)
 }
 
 #loop-ified code to change the date variable columns to date format for easier manipulation
 for(i in 1:8)
 {
-  x_merged[[paste0("date.", i)]] <- as.Date(x_merged[[paste0("date.", i)]], format = "%Y-%m-%d", origin = "1900-01-01")
+  x_merged[[paste0("date_", i)]] <- as.Date(x_merged[[paste0("date_", i)]], format = "%Y-%m-%d", origin = "1900-01-01")
 }
 
-#creates second treatment date column
+#creates treatment date column for every buffer that a cell falls into, from 1 buffer to 8 buffers
+#NA if there is no 2nd, 3rd, 4th, etc. buffer
+#code uses specific position of date fields in the dataframe, so update code if positions changes
 test<-x_merged
 x_merged$date_trt<-apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[1])
 x_merged$date_trt2 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[2])
@@ -174,52 +176,47 @@ x_merged$date_trt8 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort
 # test$trt9 <- apply(test[c(2,5,8,11,14,17,20,23)],1,function(x) rev(sort(x,decreasing=TRUE))[9])
 # count(is.na(test$trt9))
 
-#loop-ified code to change the date variable columns to date format for easier manipulation
-for(i in 1:8)
-{
-  x_merged[[paste0("date.", i)]] <- as.Date(x_merged[[paste0("date.", i)]], format = "%Y-%m-%d", origin = "1900-01-01")
-}
-
 # #creates the treatment date column
 # x_merged$date.treat <- pmin(x_merged$date.1, x_merged$date.2, x_merged$date.3, x_merged$date.4,
 #                                 x_merged$date.5, x_merged$date.6, x_merged$date.7, x_merged$date.8, na.rm = TRUE)
 
-#loop-ified code to create a variable "treat_col" which contains the number of the treatment columns (1-8)
+#loop-ified code to create a variable "trt_col" which contains the number of the treatment columns (1-8)
+#is usually 1, but date columns are not always in chronological order
 for(i in 1:8)
 {
-  x_merged[["trt_col"]][x_merged[["date_trt"]] == x_merged[[paste0("date.", i)]]] <- i
-  x_merged[["trt2_col"]][x_merged[["date_trt2"]] == x_merged[[paste0("date.", i)]]] <- i
-  x_merged[["trt3_col"]][x_merged[["date_trt3"]] == x_merged[[paste0("date.", i)]]] <- i
-  x_merged[["trt4_col"]][x_merged[["date_trt4"]] == x_merged[[paste0("date.", i)]]] <- i
-  x_merged[["trt5_col"]][x_merged[["date_trt5"]] == x_merged[[paste0("date.", i)]]] <- i
-  x_merged[["trt6_col"]][x_merged[["date_trt6"]] == x_merged[[paste0("date.", i)]]] <- i
-  x_merged[["trt7_col"]][x_merged[["date_trt7"]] == x_merged[[paste0("date.", i)]]] <- i
-  x_merged[["trt8_col"]][x_merged[["date_trt8"]] == x_merged[[paste0("date.", i)]]] <- i
+  x_merged[["trt_col"]][x_merged[["date_trt"]] == x_merged[[paste0("date_", i)]]] <- i
+  x_merged[["trt2_col"]][x_merged[["date_trt2"]] == x_merged[[paste0("date_", i)]]] <- i
+  x_merged[["trt3_col"]][x_merged[["date_trt3"]] == x_merged[[paste0("date_", i)]]] <- i
+  x_merged[["trt4_col"]][x_merged[["date_trt4"]] == x_merged[[paste0("date_", i)]]] <- i
+  x_merged[["trt5_col"]][x_merged[["date_trt5"]] == x_merged[[paste0("date_", i)]]] <- i
+  x_merged[["trt6_col"]][x_merged[["date_trt6"]] == x_merged[[paste0("date_", i)]]] <- i
+  x_merged[["trt7_col"]][x_merged[["date_trt7"]] == x_merged[[paste0("date_", i)]]] <- i
+  x_merged[["trt8_col"]][x_merged[["date_trt8"]] == x_merged[[paste0("date_", i)]]] <- i
 
 }
 
 #loop-ified code to change the road name columns from factor to character format
 for(i in 1:8)
 {
-  x_merged[[paste0("road_name.", i)]] <- as.character(x_merged[[paste0("road_name.", i)]])
+  x_merged[[paste0("road_", i)]] <- as.character(x_merged[[paste0("road_", i)]])
 }
 
 #loop-ified code to create the treatment road_name column
 for(i in 1:8)
 {
-  x_merged[["road_name_trt"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("road_name.", i)]][x_merged[["trt_col"]] == i]
+  x_merged[["road_trt"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("road_", i)]][x_merged[["trt_col"]] == i]
 }
 
 #loop-ified code to create the treatment buffer_id
 for(i in 1:8)
 {
-  x_merged[["buffer_id_trt"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("buffer_id.", i)]][x_merged[["trt_col"]] == i]
+  x_merged[["buffer_id_trt"]][x_merged[["trt_col"]] == i] <- x_merged[[paste0("buffer_id_", i)]][x_merged[["trt_col"]] == i]
 }
 
 #loop-ified code to create the treatment road distance
 for(i in 1:8)
 {
-  x_merged[["dist_trt"]][x_merged[["trt_col"]]== i] <- x_merged[[paste0("dist.",i)]][x_merged[["trt_col"]]==i]
+  x_merged[["dist_trt"]][x_merged[["trt_col"]]== i] <- x_merged[[paste0("dist_",i)]][x_merged[["trt_col"]]==i]
 }
 
 #loop-ified code to put the treatment date columns in standard date format for easier manipulation
@@ -240,12 +237,12 @@ for(i in temp_col_list)
 
 ##SHOULD REORG THIS TO PUT THINGS IN ORDER
 # #loop-ified code to reorder and trim the merged dataset to the columns we want in the correct order
-# final_col_list <- c("row_num", "cell_id", "treat_col")
+# final_col_list <- c("row_num", "cell_id", "trt_col")
 # for(i in temp_col_list)
 # {
-#   final_col_list <- c(final_col_list, paste0("buffer_id.", i), paste0("road_name.", i),
-#                       paste0("dist.",i), paste0("date.", i),
-#                       paste0("date.", i, ".d"), paste0("date.", i, ".m"), paste0("date.", i, ".y"))
+#   final_col_list <- c(final_col_list, paste0("buffer_id_", i), paste0("road_", i),
+#                       paste0("dist_",i), paste0("date_[0-9]", i),
+#                       paste0("date_", i, "_d"), paste0("date_", i, "_m"), paste0("date.", i, ".y"))
 # }
 # x_merged <- x_merged[, final_col_list]
 
