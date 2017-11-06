@@ -64,7 +64,7 @@ inpii_data<-inpii_data1
 ## Read in geo(query) cell-level extracts
 #id_1, name_1, dist_1 (etc) columns identify 5 km buffer that each cells falls into, where the number at the end is the buffer id from buffers$road_id 
 #will use buffer ids to create treatment vars
-wb_cells<-read.csv("Data/road_grid_750_extracts.csv")
+wb_cells<-read.csv("Data/road_grid_750_extracts.csv",na.strings=c("","NA"))
 
 ## Rename covariates for use in analytical models (less complicated names)
 #break out max and mean ndvi separately in order to rename
@@ -112,6 +112,80 @@ colnames(wb_cells) <- sub("v4composites_calibrated_201709.","dmsp_",colnames(wb_
 #-------
 #changes "name" columns in wb_cells to "road" columns
 colnames(wb_cells) <- gsub("name_", "road_", colnames(wb_cells))
+
+# create new dataset "x" (name makes it easier to use old code) that includes only cell_id, and road id/name/dist columns
+id<-paste(colnames(wb_cells)[grep("id",colnames(wb_cells))])
+dist<-paste(colnames(wb_cells)[grep("*dist_",colnames(wb_cells))])
+road<-paste(colnames(wb_cells)[grep("*road_",colnames(wb_cells))])
+
+trtvars <- c(id,road,dist)
+x <- wb_cells[trtvars]
+
+#creates separate road_name and distance dataframes, deletes the other respective variable from the dataframes
+x_road_name <- x[, -grep("id_", colnames(x))]
+x_road_name <- x_road_name[, -grep("dist", colnames(x_road_name))]
+
+x_dist <- x[,-grep("id_",colnames(x))]
+x_dist <- x_dist[,-grep("road",colnames(x_dist))]
+
+x_id <- x[,-grep("dist_",colnames(x))]
+x_id <- x_id[,-grep("road",colnames(x_id))]
+
+#shifts the data left in each dataframe so that the rightmost columns are all NAs, and renames the colnames to the original names
+x_road_name_left = as.data.frame(t(apply(x_road_name, 1, function(x) { return(c(x[!is.na(x)],x[is.na(x)]) )} )))
+colnames(x_road_name_left) <- colnames(x_road_name)
+
+x_dist_left = as.data.frame(t(apply(x_dist, 1, function(x) { return(c(x[!is.na(x)],x[is.na(x)]) )} )))
+colnames(x_dist_left) <- colnames(x_dist)
+
+x_id_left = as.data.frame(t(apply(x_id, 1, function(x) { return(c(x[!is.na(x)],x[is.na(x)]) )} )))
+colnames(x_id_left) <- colnames(x_id)
+
+# #Double check data shift
+# #should be no NAs in column 1
+# sum(is.na(x_dist_left$dist_1))
+# sum(is.na(x_road_name_left$road_1))
+# sum(is.na(x_id_left$id_1))
+# #numbers of NA should match in column 2
+# sum(is.na(x_dist_left$dist_2))
+# sum(is.na(x_road_name_left$road_2))
+# sum(is.na(x_id_left$id_2))
+# #should have non-NA values in column 9 but not in column 10
+# sum(is.na(x_dist_left$dist_9))
+# sum(is.na(x_road_name_left$road_9))
+# sum(is.na(x_id_left$id_9))
+# sum(is.na(x_dist_left$dist_10))
+# sum(is.na(x_road_name_left$road_10))
+# sum(is.na(x_id_left$id_10))
+
+#Merges the three left-shifted dataframes and orders the columns at the same time - also deletes all columns 10 and greater (they're all NAs)
+#Must sort components first to be sure rows are in the same order
+x_id_left<-x_id_left[order(x_id_left$cell_id),]
+x_dist_left<-x_dist_left[order(x_dist_left$cell_id),]
+x_road_name_left<-x_road_name_left[order(x_road_name_left$cell_id),]
+
+x_left <- cbind.data.frame(x_id_left$cell_id, x_id_left$id_1, x_road_name_left$road_1,x_dist_left$dist_1,
+                           x_id_left$id_2, x_road_name_left$road_2, x_dist_left$dist_2,
+                           x_id_left$id_3, x_road_name_left$road_3, x_dist_left$dist_3,
+                           x_id_left$id_4, x_road_name_left$road_4, x_dist_left$dist_4,
+                           x_id_left$id_5, x_road_name_left$road_5, x_dist_left$dist_5,
+                           x_id_left$id_6, x_road_name_left$road_6, x_dist_left$dist_6,
+                           x_id_left$id_7, x_road_name_left$road_7, x_dist_left$dist_7,
+                           x_id_left$id_8, x_road_name_left$road_8, x_dist_left$dist_8,
+                           x_id_left$id_9, x_road_name_left$road_9, x_dist_left$dist_9)
+#Check column bind by manually looking at a few random cell ids
+
+#renames the colnames to the original names
+colnames(x_left) <- c("cell_id", "id_1", "road_1","dist_1",
+                      "id_2", "road_2","dist_2",
+                      "id_3", "road_3","dist_3",
+                      "id_4", "road_4","dist_4",
+                      "id_5", "road_5","dist_5",
+                      "id_6", "road_6","dist_6",
+                      "id_7", "road_7","dist_7",
+                      "id_8", "road_8","dist_8",
+                      "id_9","road_9","dist_9")
+
 
 
 
