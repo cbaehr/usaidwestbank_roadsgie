@@ -20,12 +20,10 @@ library(multilevelMatching)
 # devtools::install_github("itpir/SCI@master")
 # library(SCI)
 
-#input cell-level extracts file
-cells<-read.csv("Data/road_grid_750_extracts.csv")
 
-##--
+##-------
 ##Create list of road segment/buffer names, ids, and final completion dates
-##--
+##-------
 
 ## get road/buffer ids from buffer shapefile used to create our sample of cells
 #input buffers geojson and convert to dataframe
@@ -58,5 +56,68 @@ inpii_data$road_name <- as.character(road_names_list[matched_list])
 inpii_data1<-merge(x=inpii_data,y=buffers,by.x="road_name",by.y="Name",type="inner")
 inpii_data<-inpii_data1
 #subset to list of road/buffers, ids, completion dates and export to GitRepo????
+
+#-------
+# Create grid cell level wide dataset
+#-------
+
+## Read in geo(query) cell-level extracts
+#id_1, name_1, dist_1 (etc) columns identify 5 km buffer that each cells falls into, where the number at the end is the buffer id from buffers$road_id 
+#will use buffer ids to create treatment vars
+wb_cells<-read.csv("Data/road_grid_750_extracts.csv")
+
+## Rename covariates for use in analytical models (less complicated names)
+#break out max and mean ndvi separately in order to rename
+max_ndvi<-wb_cells[c(1,343:402)]
+colnames(max_ndvi)<-sub("ltdr_avhrr_monthly_ndvi.","maxl_",colnames(max_ndvi))
+colnames(max_ndvi) <- gsub(".max", "", colnames(max_ndvi), fixed=TRUE)
+
+mean_ndvi<-wb_cells[c(1,283:342)]
+colnames(mean_ndvi)<-sub("ltdr_avhrr_monthly_ndvi.","meanl_",colnames(mean_ndvi))
+colnames(mean_ndvi) <- gsub(".mean", "", colnames(mean_ndvi), fixed=TRUE)
+#merge max and mean ndvi back in to wb_cells
+ndvi<-merge(max_ndvi,mean_ndvi)
+wb_cells<-wb_cells[,-grep("ltdr_avhrr_monthly_ndvi",colnames(wb_cells))]
+wb_cells1<-merge(wb_cells,ndvi)
+wb_cells<-wb_cells1
+
+#rename yearly ndvi
+colnames(wb_cells) <- sub("ltdr_avhrr_yearly_ndvi.","meanl_",colnames(wb_cells))
+#remove ".mean" at end of covariates
+colnames(wb_cells) <- gsub(".mean", "", colnames(wb_cells), fixed=TRUE)
+colnames(wb_cells) <- gsub(".na", "", colnames(wb_cells), fixed=TRUE)
+#rename
+colnames(wb_cells) <- sub("dist_to_water","waterdist",colnames(wb_cells))
+colnames(wb_cells) <- sub("dist_to_groads","roaddist",colnames(wb_cells))
+colnames(wb_cells) <- sub("srtm_elevation_500m","elevation",colnames(wb_cells))
+colnames(wb_cells) <- sub("srtm_slope_500m","slope",colnames(wb_cells))
+colnames(wb_cells) <- sub("accessibility_map","urbtravtime",colnames(wb_cells))
+colnames(wb_cells) <- sub("gpw_v[0-9]_density.","pop_",colnames(wb_cells))
+#temp
+colnames(wb_cells) <- sub("udel_air_temp_v4_01_yearly_mean.","MeanT_",colnames(wb_cells))
+colnames(wb_cells) <- sub("udel_air_temp_v4_01_yearly_min.","MinT_",colnames(wb_cells))
+colnames(wb_cells) <- sub("udel_air_temp_v4_01_yearly_max.","MaxT_",colnames(wb_cells))
+#precip
+colnames(wb_cells) <- sub("udel_precip_v4_01_yearly_mean.","MeanP_",colnames(wb_cells))
+colnames(wb_cells) <- sub("udel_precip_v4_01_yearly_min.","MinP_",colnames(wb_cells))
+colnames(wb_cells) <- sub("udel_precip_v4_01_yearly_max.","MaxP_",colnames(wb_cells))
+#ntl
+colnames(wb_cells) <- sub("ntl_yearly.","",colnames(wb_cells))
+colnames(wb_cells) <- sub("ntl_monthly.","",colnames(wb_cells))
+#dmsp ntl
+colnames(wb_cells) <- sub("v4composites_calibrated_201709.","dmsp_",colnames(wb_cells))
+
+#-------
+# Create Treatment Variables
+#-------
+#changes "name" columns in wb_cells to "road" columns
+colnames(wb_cells) <- gsub("name_", "road_", colnames(wb_cells))
+
+
+
+
+
+
+
 
 
