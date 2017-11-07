@@ -55,6 +55,11 @@ inpii_data$road_name <- as.character(road_names_list[matched_list])
 #merge buffer data and INPII data together by road_name
 inpii_data1<-merge(x=inpii_data,y=buffers,by.x="road_name",by.y="Name",type="inner")
 inpii_data<-inpii_data1
+#fixes ACTUAL_COM column in inpii_data to be formatted as date (for later use)
+inpii_data[["ACTUAL_COM"]][inpii_data[["ACTUAL_COM"]] == 9999] <- NA
+inpii_data$ACTUAL_COM <- as.Date(inpii_data$ACTUAL_COM, format = "%m/%d/%y")
+inpii_data[["ACTUAL_COM"]][is.na(inpii_data[["ACTUAL_COM"]])] <- "9999-01-01"
+
 #subset to list of road/buffers, ids, completion dates and export to GitRepo????
 
 #-------
@@ -185,8 +190,62 @@ colnames(x_left) <- c("cell_id", "id_1", "road_1","dist_1",
                       "id_7", "road_7","dist_7",
                       "id_8", "road_8","dist_8",
                       "id_9","road_9","dist_9")
+x_merged<-x_left
 
+#merge in completion date for each set of road columns 1-9 to reflect date that road improvements completed for that road segment
+#subset inpii_data to road_id and actual completion date, to be used as treatment date
+#date is in YYYY-MM-DD (formatted earlier in script)
+date<-inpii_data[,c("road_id","ACTUAL_COM")]
+#merge in completion date based on id_1 for first set of road columns, set in date format
+# x_merged<-merge(x_merged, date,by.x="id_1",by.y="road_id")
+# names(x_merged)[names(x_merged)=='ACTUAL_COM']<-'date_1'
+# x_merged<-merge(x_merged, date,by.x="id_2",by.y="road_id")
+# names(x_merged)[names(x_merged)=='ACTUAL_COM']<-'date_2'
+# x_merged<-merge(x_merged, date,by.x="id_3",by.y="road_id")
+# names(x_merged)[names(x_merged)=='ACTUAL_COM']<-'date_3'
 
+for (i in 1:9)
+{
+x_merged<-merge(x_merged, date,by.x=(paste0("id_",i)),by.y="road_id",all.x=TRUE)
+names(x_merged)[names(x_merged)=='ACTUAL_COM']<-paste0("date_",i)
+}
+
+#creates treatment date column for every buffer that a cell falls into, from 1 buffer to 9 buffers
+#NA if there is no 2nd, 3rd, 4th, etc. buffer
+#date_ columns are not necessarily in descending order
+#code uses specific position of date fields in the dataframe, so update code if positions changes
+x_merged$date_trt<-apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[1])
+x_merged$date_trt2 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[2])
+x_merged$date_trt3 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[3])
+x_merged$date_trt4 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[4])
+x_merged$date_trt5 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[5])
+x_merged$date_trt6 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[6])
+x_merged$date_trt7 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[7])
+x_merged$date_trt8 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[8])
+x_merged$date_trt9 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[9])
+
+## NEED TO FIGURE OUT; currently pastes number from final column
+# #loop-ified code to create a variable "trt_col" which contains the number of the treatment columns (1-9)
+# #is usually 1, but date columns are not always in chronological order
+# #for(i in 1:9)
+# #{
+#   x_merged[["trt_col"]][x_merged[["date_trt"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt2_col"]][x_merged[["date_trt2"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt3_col"]][x_merged[["date_trt3"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt4_col"]][x_merged[["date_trt4"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt5_col"]][x_merged[["date_trt5"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt6_col"]][x_merged[["date_trt6"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt7_col"]][x_merged[["date_trt7"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt8_col"]][x_merged[["date_trt8"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt9_col"]][x_merged[["date_trt9"]] == x_merged[[paste0("date_", i)]]] <- i
+#   
+# #}
+
+#loop-ified code to change the road name columns from factor to character format
+for(i in 1:9)
+{
+  x_merged[[paste0("road_", i)]] <- as.character(x_merged[[paste0("road_", i)]])
+}
 
 
 
