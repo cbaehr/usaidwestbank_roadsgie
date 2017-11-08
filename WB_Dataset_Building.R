@@ -196,33 +196,73 @@ x_merged<-x_left
 #subset inpii_data to road_id and actual completion date, to be used as treatment date
 #date is in YYYY-MM-DD (formatted earlier in script)
 date<-inpii_data[,c("road_id","ACTUAL_COM")]
+
 #merge in completion date based on id_1 for first set of road columns, set in date format
-# x_merged<-merge(x_merged, date,by.x="id_1",by.y="road_id")
-# names(x_merged)[names(x_merged)=='ACTUAL_COM']<-'date_1'
-# x_merged<-merge(x_merged, date,by.x="id_2",by.y="road_id")
-# names(x_merged)[names(x_merged)=='ACTUAL_COM']<-'date_2'
-# x_merged<-merge(x_merged, date,by.x="id_3",by.y="road_id")
-# names(x_merged)[names(x_merged)=='ACTUAL_COM']<-'date_3'
 
 for (i in 1:9)
 {
 x_merged<-merge(x_merged, date,by.x=(paste0("id_",i)),by.y="road_id",all.x=TRUE)
 names(x_merged)[names(x_merged)=='ACTUAL_COM']<-paste0("date_",i)
+x_merged[[paste0("date_", i)]] <- as.Date(x_merged[[paste0("date_", i)]])
 }
+
+#create new column that concatenates date and column number for date
+#column number will be used later for order of treatment dates
+for (i in 1:9)
+{
+  x_merged[[paste0("date_colnum",i)]]<-paste(x_merged[[paste0("date_",i)]],i,sep=";")
+}  
 
 #creates treatment date column for every buffer that a cell falls into, from 1 buffer to 9 buffers
 #NA if there is no 2nd, 3rd, 4th, etc. buffer
 #date_ columns are not necessarily in descending order
-#code uses specific position of date fields in the dataframe, so update code if positions changes
-x_merged$date_trt<-apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[1])
-x_merged$date_trt2 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[2])
-x_merged$date_trt3 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[3])
-x_merged$date_trt4 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[4])
-x_merged$date_trt5 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[5])
-x_merged$date_trt6 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[6])
-x_merged$date_trt7 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[7])
-x_merged$date_trt8 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[8])
-x_merged$date_trt9 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasing=TRUE))[9])
+#code uses specific position of date + column number fields in the dataframe, so update code if positions changes
+x_merged$datenum_trt1 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[1])
+x_merged$datenum_trt2 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[2])
+x_merged$datenum_trt3 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[3])
+x_merged$datenum_trt4 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[4])
+x_merged$datenum_trt5 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[5])
+x_merged$datenum_trt6 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[6])
+x_merged$datenum_trt7 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[7])
+x_merged$datenum_trt8 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[8])
+x_merged$datenum_trt9 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[9])
+
+#separates the date+column number fields, now in descending order, in to separate date field and column field
+#can use column number to join with road name and distance
+x_merged<-x_merged %>% separate(datenum_trt1,c("date_trt","col_trt"),";",remove=FALSE)
+x_merged<-x_merged %>% separate(datenum_trt2,c("date_trt2","col_trt2"),";",remove=FALSE)
+x_merged<-x_merged %>% separate(datenum_trt3,c("date_trt3","col_trt3"),";",remove=FALSE)
+x_merged<-x_merged %>% separate(datenum_trt4,c("date_trt4","col_trt4"),";",remove=FALSE)
+x_merged<-x_merged %>% separate(datenum_trt5,c("date_trt5","col_trt5"),";",remove=FALSE)
+x_merged<-x_merged %>% separate(datenum_trt6,c("date_trt6","col_trt6"),";",remove=FALSE)
+x_merged<-x_merged %>% separate(datenum_trt7,c("date_trt7","col_trt7"),";",remove=FALSE)
+x_merged<-x_merged %>% separate(datenum_trt8,c("date_trt8","col_trt8"),";",remove=FALSE)
+x_merged<-x_merged %>% separate(datenum_trt9,c("date_trt9","col_trt9"),";",remove=FALSE)
+
+###NEED TO REPLACE NAs as actual NA, not the character "NA", and then delete the datenum combo columns 
+
+
+##SCRATCH BEGINS
+#x_merged$trt_col<-strsplit(x_merged$date_trt,";")
+#x_merged %>% separate(date_trt,c("trt_date","trt_col"),";")
+
+# x_merged %>% separate(date_trt,c("trt_date","trt_col"),";")
+# before %>%
+#   separate(type, c("foo", "bar"), "_and_")
+# 
+# x_merged$test<-sapply(colnames(x_merged),1,function(name){paste0(name)},simplify=F)
+# x_merged$test<-apply(x_merged[c(29:37)],1,function(x) {paste(names(x_merged))},rev(sort(x,decreasing=TRUE))[1])
+# 
+# x_merged$test<-apply(x_merged[c(29:37)],1,function(x) {paste0(rank(x),sep=",")})
+# 
+# a<-x_merged[29:37]
+# x_merged$test<-paste0(rank(a),sep=",")
+# 
+# 
+# x_merged$trt_col<-
+# df2 <- as.data.frame(sapply(colnames(df),
+#                             function(name){ paste(name,df[,name],sep=", ")},
+#                             simplify=F)
 
 ## NEED TO FIGURE OUT; currently pastes number from final column
 # #loop-ified code to create a variable "trt_col" which contains the number of the treatment columns (1-9)
@@ -240,6 +280,9 @@ x_merged$date_trt9 <- apply(x_merged[c(29:37)],1,function(x) rev(sort(x,decreasi
 #   x_merged[["trt9_col"]][x_merged[["date_trt9"]] == x_merged[[paste0("date_", i)]]] <- i
 #   
 # #}
+
+### SCRATCH ENDS
+
 
 #loop-ified code to change the road name columns from factor to character format
 for(i in 1:9)
