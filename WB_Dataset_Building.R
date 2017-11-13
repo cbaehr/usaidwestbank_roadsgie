@@ -180,43 +180,45 @@ x_left <- cbind.data.frame(x_id_left$cell_id, x_id_left$id_1, x_road_name_left$r
                            x_id_left$id_9, x_road_name_left$road_9, x_dist_left$dist_9)
 #Check column bind by manually looking at a few random cell ids
 
-#renames the colnames to the original names
-colnames(x_left) <- c("cell_id", "id_1", "road_1","dist_1",
-                      "id_2", "road_2","dist_2",
-                      "id_3", "road_3","dist_3",
-                      "id_4", "road_4","dist_4",
-                      "id_5", "road_5","dist_5",
-                      "id_6", "road_6","dist_6",
-                      "id_7", "road_7","dist_7",
-                      "id_8", "road_8","dist_8",
-                      "id_9","road_9","dist_9")
+#renames the colnames to the original names, using letters instead of numbers to group
+colnames(x_left) <- c("cell_id", "id_a", "road_a","dist_a",
+                      "id_b", "road_b","dist_b",
+                      "id_c", "road_c","dist_c",
+                      "id_d", "road_d","dist_d",
+                      "id_e", "road_e","dist_e",
+                      "id_f", "road_f","dist_f",
+                      "id_g", "road_g","dist_g",
+                      "id_h", "road_h","dist_h",
+                      "id_j","road_j","dist_j")
 x_merged<-x_left
 
-#merge in completion date for each set of road columns 1-9 to reflect date that road improvements completed for that road segment
+##merge in completion date for each set of road columns 1-9 to reflect date that road improvements completed for that road segment
 #subset inpii_data to road_id and actual completion date, to be used as treatment date
 #date is in YYYY-MM-DD (formatted earlier in script)
 date<-inpii_data[,c("road_id","ACTUAL_COM")]
 
 #merge in completion date based on id_1 for first set of road columns, set in date format
-
-for (i in 1:9)
+buffergrp<-c("a","b","c","d","e","f","g","h","j")
+for (i in buffergrp)
 {
 x_merged<-merge(x_merged, date,by.x=(paste0("id_",i)),by.y="road_id",all.x=TRUE)
 names(x_merged)[names(x_merged)=='ACTUAL_COM']<-paste0("date_",i)
 x_merged[[paste0("date_", i)]] <- as.Date(x_merged[[paste0("date_", i)]])
 }
 
-#create new column that concatenates date and column number for date
+#create new column that concatenates date;column number for the associated date
 #column number will be used later for order of treatment dates
-for (i in 1:9)
+#since a-i columns are not necessarily in date order, the earliest treatment date could be in col b,c, etc instead of col. a
+for (i in buffergrp)
 {
   x_merged[[paste0("date_colnum",i)]]<-paste(x_merged[[paste0("date_",i)]],i,sep=";")
 }  
 
-#creates treatment date column for every buffer that a cell falls into, from 1 buffer to 9 buffers
-#NA if there is no 2nd, 3rd, 4th, etc. buffer
-#date_ columns are not necessarily in descending order
-#code uses specific position of date + column number fields in the dataframe, so update code if positions changes
+#creates treatment date column for every buffer that a cell falls into, from buffer a to j (9 buffers is the max for one cell)
+#date_[a-j] columns are not necessarily in chronological order, so this identifies the earliest date from up to 9 date columns for each cell
+# includes the original a-j column letter as part of the value in order to identify which buffer group the date belongs to (will separate and use later)
+#code uses specific position of date + column letter fields in the dataframe, so update code if positions changes
+# 1 is earliest treatment date, 9 is latest treatment date
 x_merged$datenum_trt1 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[1])
 x_merged$datenum_trt2 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[2])
 x_merged$datenum_trt3 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[3])
@@ -227,9 +229,9 @@ x_merged$datenum_trt7 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decre
 x_merged$datenum_trt8 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[8])
 x_merged$datenum_trt9 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[9])
 
-#separates the date+column number fields, now in descending order, in to separate date field and column field
-#can use column number to join with road name and distance
-x_merged<-x_merged %>% separate(datenum_trt1,c("date_trt","col_trt"),";",remove=FALSE)
+#separates the date+column letter fields, now in descending order, in to separate date field and column field
+#can use column letter to join with road name and distance information
+x_merged<-x_merged %>% separate(datenum_trt1,c("date_trt1","col_trt1"),";",remove=FALSE)
 x_merged<-x_merged %>% separate(datenum_trt2,c("date_trt2","col_trt2"),";",remove=FALSE)
 x_merged<-x_merged %>% separate(datenum_trt3,c("date_trt3","col_trt3"),";",remove=FALSE)
 x_merged<-x_merged %>% separate(datenum_trt4,c("date_trt4","col_trt4"),";",remove=FALSE)
@@ -239,7 +241,122 @@ x_merged<-x_merged %>% separate(datenum_trt7,c("date_trt7","col_trt7"),";",remov
 x_merged<-x_merged %>% separate(datenum_trt8,c("date_trt8","col_trt8"),";",remove=FALSE)
 x_merged<-x_merged %>% separate(datenum_trt9,c("date_trt9","col_trt9"),";",remove=FALSE)
 
-###NEED TO REPLACE NAs as actual NA, not the character "NA", and then delete the datenum combo columns 
+#x_merged has series of columns with _[1-9] that identify the road buffers that a single cell is part of (9 is max)
+# x_merged$date_[a-j] date that the road in each buffer a-j improvements were completed 
+# x_merged$date_colnum concatenates completion date and a-j buffer column letter that the completion date is associated with in order to put in descending order
+# x_merged$datenum_trt[1-9] series of columns that puts the date of improvements in chronological order, earliest to latest, with associated a-j buffer column letter attached at end
+# x_merged$date_trt[1-9] and col_trt[1-9] un-concatenate datenum_trt to give one column with the dates in earliest(1) to latest(9) order and another column with the a-j buffer column that it originally came from
+# can use col_trt to join in the buffer name, id, and distance information with the chronological order treatment date information (to determine distance to treated buffer for each separate treatment date)
+# some of these columns will not be used in final dataset and will be deleted later
+
+#replace "NA" in date_trt with NA values rather than string "NA"
+for (i in 1:9)
+{
+  x_merged[[paste0("date_trt",i)]][x_merged[[paste0("date_trt",i)]]=="NA"]<- NA
+}
+#delete unused columns, "date_colnum" and "datenum_trt"
+x_merged1<-x_merged
+x_merged1<-x_merged1[,-grep("date_colnum",colnames(x_merged1))]
+x_merged1<-x_merged1[,-grep("datenum_trt",colnames(x_merged1))]
+x_merged<-x_merged1
+
+#fix formatting of date columns to be recognizable as dates and split into month, day, year
+#loop-ified code to create the treatment road distances
+
+for(i in buffergrp)
+{
+  x_merged[["dist_trt1"]][x_merged[["col_trt1"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt1"]]==i]
+  x_merged[["dist_trt2"]][x_merged[["col_trt2"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt2"]]==i]
+  x_merged[["dist_trt3"]][x_merged[["col_trt3"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt3"]]==i]
+  x_merged[["dist_trt4"]][x_merged[["col_trt4"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt4"]]==i]
+  x_merged[["dist_trt5"]][x_merged[["col_trt5"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt5"]]==i]
+  x_merged[["dist_trt6"]][x_merged[["col_trt6"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt6"]]==i]
+  x_merged[["dist_trt7"]][x_merged[["col_trt7"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt7"]]==i]
+  x_merged[["dist_trt8"]][x_merged[["col_trt8"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt8"]]==i]
+  x_merged[["dist_trt9"]][x_merged[["col_trt9"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt9"]]==i]
+}
+
+#loop-ified code to put the treatment date columns in standard date format for easier manipulation
+temp_col_list <- c("trt1", "trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8","trt9")
+for(i in temp_col_list)
+{
+  x_merged[[paste0("date_", i)]] <- as.Date(x_merged[[paste0("date_", i)]])
+  #x_merged[[paste0("date_", i, "_d")]] = as.numeric(format(x_merged[[paste0("date_", i)]], format = "%d"))
+  x_merged[[paste0("date_", i, "_m")]] = as.numeric(format(x_merged[[paste0("date_", i)]], format = "%m"))
+  x_merged[[paste0("date_", i, "_y")]] = as.numeric(format(x_merged[[paste0("date_", i)]], format = "%Y"))
+  x_merged[[paste0("date_", i, "_ym")]] = as.numeric(format(x_merged[[paste0("date_", i)]], format = "%Y%m"))
+}
+
+#-------
+# Prepare Wide Dataset for Panel Conversion
+#-------
+
+#drop buffer id, name, and distance columns from wb_cells
+#information replaced by "trt" columns in x_merged
+wb_cells2<-wb_cells[,-grep("id_",colnames(wb_cells))]
+wb_cells2<-wb_cells2[,-grep("road_",colnames(wb_cells2))]
+wb_cells2<-wb_cells2[,-grep("dist_",colnames(wb_cells2))]
+wb_cells<-wb_cells2
+
+#merge x_merged back in with wb_cells
+wb_cells<-merge(wb_cells,x_merged)
+
+#add municipality info for cell
+# read in muni data and drop extra columns
+muni_shp <- st_read("Data/cells_localities_join.shp")
+muni<-as.data.frame(muni_shp)
+#drop out "id" field created by QGIS and geometry
+muni <- muni[,-(1)]
+muni <- muni[,-grep("geometry",names(muni))]
+#merge
+wb_cells3 <- join(x=wb_cells, y=muni, by="cell_id", type="left")
+
+wb_cells<-wb_cells3
+
+
+#------------
+# Create Panel Dataset
+#------------
+
+#monthly viirs starts April 2012
+#ndvi monthly
+#pop every 5 years - can't use since it takes ntl into account
+#temp and precip end in 2014 - can't use those either
+
+#Drop out unneeded variables
+#For vars that change over time, only using monthly vars starting April 2012 through Dec 2016
+#Drop out temp, precip, yearly ndvi; keep yearly viirs and dmsp for robustness checks
+# Drop monthly maxl and meanl for jan/feb/mar 2012
+wb_reshape <- wb_cells
+wb_reshape1 <- wb_reshape[,-c(22:53,133:285,343:345)]
+
+#Update final version of wb_reshape
+wb_reshape <- wb_reshape1
+
+#Order variables by name/time to allow reshape to work properly
+wb_reshape<-wb_reshape[,order(names(wb_reshape))]
+
+#Identify variables where values will change monthly in panel dataset
+MaxL<-grep("maxl_",names(wb_reshape))
+MeanL<-grep("meanl_",names(wb_reshape))
+Viirs<-grep("viirs_",names(wb_reshape))
+
+all_reshape <- c(MaxL,MeanL,Viirs)
+wb_panel <- reshape(wb_reshape, varying=all_reshape, direction="long",idvar="cell_id",sep="_",timevar="Month")
+
+#check panel construction
+View(wb_panel[1:100])
+View(wb_panel[100:177])
+
+wb_panel_ch <- wb_panel[wb_panel$cell_id<220,]
+ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
+wb_panel_ch <- wb_panel_ch[ch_vars]
+wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
+View(wb_panel_ch[100:177])
+View(wb_reshape[100:200])
+View(wb_reshape[200:300])
+
+
 
 
 ##SCRATCH BEGINS
@@ -282,16 +399,6 @@ x_merged<-x_merged %>% separate(datenum_trt9,c("date_trt9","col_trt9"),";",remov
 # #}
 
 ### SCRATCH ENDS
-
-
-#loop-ified code to change the road name columns from factor to character format
-for(i in 1:9)
-{
-  x_merged[[paste0("road_", i)]] <- as.character(x_merged[[paste0("road_", i)]])
-}
-
-
-
 
 
 
