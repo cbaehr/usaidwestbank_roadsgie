@@ -357,6 +357,46 @@ View(wb_reshape[100:200])
 View(wb_reshape[200:300])
 
 
+#create dichotomous treatment variable
+# #create yearmonth treatment values
+# wb_panel$date_trt_m<-formatC(wb_panel$date_trt_m, width=2, format="d",flag="0")
+# wb_panel$date_trt_ym<-as.numeric(paste(wb_panel$date_trt_y,wb_panel$date_trt_m,sep=""))
+#set trt=1 if month is equal to or after date_treat_ym
+wb_panel$trt1<-NA
+wb_panel$trt1[which(wb_panel$Month<wb_panel$date_trt1_ym)]<-0
+wb_panel$trt1[which(wb_panel$Month>=wb_panel$date_trt1_ym)]<-1
+View(wb_panel[100:178])
+#create dichotomous treatment variable for multiple treatments (i.e. cell present in more than one buffer)
+#create from 2 to 8 buffers
+#format month as 2 digits
+temp_col_list <- c("trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8","trt9")
+for(i in temp_col_list)
+{
+  #create treatment var for buffers 2-9
+  wb_panel[i]<-NA
+  wb_panel[i]<-ifelse(is.na(wb_panel[[paste0("date_",i,"_ym")]]),0,
+                      ifelse(wb_panel$Month>=wb_panel[[paste0("date_",i,"_ym")]],1,0))
+}
+#check: treatment columns should not have any NAs (should only be 0 or 1)
+#for trt 4, should be =0 for 233,191 obs and =1 for 2333 obs 
+summary(wb_panel$trt4)
+table(wb_panel$trt4)
+table(wb_panel$date_trt4_ym)
+
+
+#create slim version for analysis
+
+trt<-paste(colnames(wb_panel)[grep("*trt",colnames(wb_panel))])
+id<-paste(colnames(wb_panel)[grep("*_id",colnames(wb_panel))])
+date<-paste(colnames(wb_panel)[grep("*date",colnames(wb_panel))])
+dist<-paste(colnames(wb_panel)[grep("*dist",colnames(wb_panel))])
+road<-paste(colnames(wb_panel)[grep("*road",colnames(wb_panel))])
+extra<-c("Month","maxl","meanl","viirs","PCBS_CO")
+
+slimvars<-c(trt,id,date,dist,road,extra)
+
+wb_panel_slim <- wb_panel[slimvars]
+write.csv(wb_panel_slim,"/Users/rbtrichler/Documents/AidData/wb_panel_slim_NEW.csv")
 
 
 ##SCRATCH BEGINS
