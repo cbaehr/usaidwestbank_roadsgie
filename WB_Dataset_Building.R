@@ -394,9 +394,9 @@ road<-paste(colnames(wb_panel)[grep("*road",colnames(wb_panel))])
 extra<-c("Month","maxl","meanl","viirs","PCBS_CO")
 
 slimvars<-c(trt,id,date,dist,road,extra)
-
 wb_panel_slim <- wb_panel[slimvars]
-write.csv(wb_panel_slim,"/Users/rbtrichler/Documents/AidData/wb_panel_slim_NEW.csv")
+
+write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
 
 
 ##SCRATCH BEGINS
