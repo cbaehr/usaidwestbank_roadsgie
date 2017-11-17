@@ -387,16 +387,36 @@ table(wb_panel$date_trt4_ym)
 
 #create slim version for analysis
 
-trt<-paste(colnames(wb_panel)[grep("*trt",colnames(wb_panel))])
+trt<-paste(colnames(wb_panel)[grep("^trt",colnames(wb_panel))])
+col_trt<-paste(colnames(wb_panel)[grep("col_trt",colnames(wb_panel))])
 id<-paste(colnames(wb_panel)[grep("*_id",colnames(wb_panel))])
 date<-paste(colnames(wb_panel)[grep("*date",colnames(wb_panel))])
 dist<-paste(colnames(wb_panel)[grep("*dist",colnames(wb_panel))])
 road<-paste(colnames(wb_panel)[grep("*road",colnames(wb_panel))])
 extra<-c("Month","maxl","meanl","viirs","PCBS_CO")
 
-slimvars<-c(trt,id,date,dist,road,extra)
-
+slimvars<-c(trt,col_trt,id,date,dist,road,extra)
 wb_panel_slim <- wb_panel[slimvars]
+
+slimvars<-c(trt,id,date,dist,road,extra)
+wb_panel_slim <- wb_panel[slimvars]
+
+
+# paste in previous value for viirs missing data
+# 28 obs (19 unique cells) missing viirs data for various months, so using value from the closest non-NA following month
+# e.g. if 201502 is missing, then filled with 201503 value
+# see "scratch" section for test code that is easier to check values
+
+test<-wb_panel_slim
+test1<-test %>%
+  group_by(cell_id) %>%
+  fill(viirs, .direction="up")
+summary(wb_panel_slim$viirs)
+summary(test1$viirs)
+wb_panel_slim<-test1
+
+
+## Write to file
 write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_1000m.csv")
 
 

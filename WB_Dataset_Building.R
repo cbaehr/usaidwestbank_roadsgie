@@ -344,24 +344,22 @@ Viirs<-grep("viirs_",names(wb_reshape))
 all_reshape <- c(MaxL,MeanL,Viirs)
 wb_panel <- reshape(wb_reshape, varying=all_reshape, direction="long",idvar="cell_id",sep="_",timevar="Month")
 
-#check panel construction
-View(wb_panel[1:100])
-View(wb_panel[100:177])
+# #check panel construction
+# View(wb_panel[1:100])
+# View(wb_panel[100:177])
+# 
+# wb_panel_ch <- wb_panel[wb_panel$cell_id<220,]
+# ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
+# wb_panel_ch <- wb_panel_ch[ch_vars]
+# wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
+# View(wb_panel_ch[100:177])
+# View(wb_reshape[100:200])
+# View(wb_reshape[200:300])
 
-wb_panel_ch <- wb_panel[wb_panel$cell_id<220,]
-ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
-wb_panel_ch <- wb_panel_ch[ch_vars]
-wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
-View(wb_panel_ch[100:177])
-View(wb_reshape[100:200])
-View(wb_reshape[200:300])
 
-
-#create dichotomous treatment variable
-# #create yearmonth treatment values
-# wb_panel$date_trt_m<-formatC(wb_panel$date_trt_m, width=2, format="d",flag="0")
-# wb_panel$date_trt_ym<-as.numeric(paste(wb_panel$date_trt_y,wb_panel$date_trt_m,sep=""))
-#set trt=1 if month is equal to or after date_treat_ym
+# create dichotomous treatment variable
+# create yearmonth treatment values
+# set trt=1 if month is equal to or after date_treat_ym
 wb_panel$trt1<-NA
 wb_panel$trt1[which(wb_panel$Month<wb_panel$date_trt1_ym)]<-0
 wb_panel$trt1[which(wb_panel$Month>=wb_panel$date_trt1_ym)]<-1
@@ -386,20 +384,55 @@ table(wb_panel$date_trt4_ym)
 
 #create slim version for analysis
 
-trt<-paste(colnames(wb_panel)[grep("*trt",colnames(wb_panel))])
+trt<-paste(colnames(wb_panel)[grep("^trt",colnames(wb_panel))])
+col_trt<-paste(colnames(wb_panel)[grep("col_trt",colnames(wb_panel))])
 id<-paste(colnames(wb_panel)[grep("*_id",colnames(wb_panel))])
 date<-paste(colnames(wb_panel)[grep("*date",colnames(wb_panel))])
 dist<-paste(colnames(wb_panel)[grep("*dist",colnames(wb_panel))])
 road<-paste(colnames(wb_panel)[grep("*road",colnames(wb_panel))])
 extra<-c("Month","maxl","meanl","viirs","PCBS_CO")
 
-slimvars<-c(trt,id,date,dist,road,extra)
+slimvars<-c(trt,col_trt,id,date,dist,road,extra)
 wb_panel_slim <- wb_panel[slimvars]
 
+# paste in previous value for viirs missing data
+# 28 obs (19 unique cells) missing viirs data for various months, so using value from the closest non-NA following month
+# e.g. if 201502 is missing, then filled with 201503 value
+# see "scratch" section for test code that is easier to check values
+
+test<-wb_panel_slim
+test1<-test %>%
+  group_by(cell_id) %>%
+  fill(viirs, .direction="up")
+summary(wb_panel_slim$viirs)
+summary(test1$viirs)
+wb_panel_slim<-test1
+
+
+## Write panel data to file
+
 write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
+#wb_panel_slim <- read.csv("/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
 
 
+
+#---------------
 ##SCRATCH BEGINS
+#---------------
+
+#testing how to replace NAs in viirs observations (28 NAs out of 383,553 obs)
+viirsNAs<-wb_panel_slim[is.na(wb_panel_slim$viirs),]
+list_NA<-c(viirsNAs$cell_id)
+
+test<-wb_panel_slim[(wb_panel_slim$cell_id %in% list_NA),]
+test<-test[c(65,141:145)]
+test1<-test %>%
+  group_by(cell_id) %>%
+  fill(viirs, .direction="up") 
+
+
+
+
 #x_merged$trt_col<-strsplit(x_merged$date_trt,";")
 #x_merged %>% separate(date_trt,c("trt_date","trt_col"),";")
 
