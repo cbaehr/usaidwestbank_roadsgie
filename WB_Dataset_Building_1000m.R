@@ -398,12 +398,9 @@ extra<-c("Month","maxl","meanl","viirs","PCBS_CO")
 slimvars<-c(trt,col_trt,id,date,dist,road,extra)
 wb_panel_slim <- wb_panel[slimvars]
 
-slimvars<-c(trt,id,date,dist,road,extra)
-wb_panel_slim <- wb_panel[slimvars]
-
 
 # paste in previous value for viirs missing data
-# 28 obs (19 unique cells) missing viirs data for various months, so using value from the closest non-NA following month
+# 12 obs missing viirs data for various months, so using value from the closest non-NA following month
 # e.g. if 201502 is missing, then filled with 201503 value
 # see "scratch" section for test code that is easier to check values
 

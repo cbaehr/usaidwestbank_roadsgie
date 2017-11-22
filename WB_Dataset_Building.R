@@ -344,18 +344,6 @@ Viirs<-grep("viirs_",names(wb_reshape))
 all_reshape <- c(MaxL,MeanL,Viirs)
 wb_panel <- reshape(wb_reshape, varying=all_reshape, direction="long",idvar="cell_id",sep="_",timevar="Month")
 
-# #check panel construction
-# View(wb_panel[1:100])
-# View(wb_panel[100:177])
-# 
-# wb_panel_ch <- wb_panel[wb_panel$cell_id<220,]
-# ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
-# wb_panel_ch <- wb_panel_ch[ch_vars]
-# wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
-# View(wb_panel_ch[100:177])
-# View(wb_reshape[100:200])
-# View(wb_reshape[200:300])
-
 
 # create dichotomous treatment variable
 # create yearmonth treatment values
@@ -376,11 +364,82 @@ for(i in temp_col_list)
                       ifelse(wb_panel$Month>=wb_panel[[paste0("date_",i,"_ym")]],1,0))
 }
 #check: treatment columns should not have any NAs (should only be 0 or 1)
-#for trt 4, should be =0 for 233,191 obs and =1 for 2333 obs 
+#for trt 4, should be =0 for 376,399 obs and =1 for 7,154 obs 
 summary(wb_panel$trt4)
 table(wb_panel$trt4)
 table(wb_panel$date_trt4_ym)
 
+##----
+## Check panel construction 
+##---
+
+## check panel construction
+View(wb_panel[1:100])
+View(wb_panel[100:177])
+
+wb_panel_ch <- wb_panel[wb_panel$cell_id<220,]
+ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
+wb_panel_ch <- wb_panel_ch[ch_vars]
+wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
+View(wb_panel_ch[100:177])
+View(wb_reshape[100:200])
+View(wb_reshape[200:300])
+
+## check that names of one road segment match the names from the buffers input file
+# road_id=17 is Al Menya Landfill and it was the earliest treatment date, so should show up a lot in trt1 columns and use it to check dataset construction
+wb_panel_roads<-wb_panel[wb_panel$Month==201405,]
+road17_ch<-merge(wb_panel_roads, buffers, by.x="id_a", by.y="road_id")
+#number of cells that fall in id_a==17 should match number that fall in road_a=Al Menya Landfill
+table(road17_ch$id_a)
+table(road17_ch$id_a)
+#check summary stats for subset of only road_id=17
+road17_ch<-road17_ch[road17_ch$id_a==17,]
+#should match number of cells from above and should only be equal to 17
+table(road17_ch$id_a)
+#only non-zero value should be in Al Menya Landfill Road
+table(road17_ch$Name)
+#trt1 should all be equal to 1
+table(road17_ch$trt1)
+
+## check that completion dates match the dates from the buffers input file
+#shorten inpii_data to just ids, names, completion date and merge with wb_panel_roads
+inpii_ch<-inpii_data[c(1,10,15:17,98)]
+paneldates_ch<-merge(wb_panel_roads, inpii_ch, by.x="id_a",by.y="road_id")
+#create difference variable, and all values should be equal to zero because date in each column matches
+paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
+table(paneldates_ch$date_ch)
+#double checks that the values actually matter in this construction 
+paneldates_ch$ACTUAL_COM<-27
+table(paneldates_ch$ACTUAL_COM)
+paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
+table(paneldates_ch$date_ch)
+
+## check treatment var construction using paneldates_ch
+table(paneldates_ch$date_trt1_ym)
+#trt1 should equal 1 for all cells with a trt1_ym before 201406(since used 201405 as cut off to subset wb_panel_roads)
+#when add those cells up, should equal 2,573 equal to 1; 4156 equal to 0
+table(paneldates_ch$trt1)
+
+##check viirs values assigned correctly
+wb_reshape_201405<-wb_reshape[c("cell_id","viirs_201405")]
+panel_ch201405<-merge(wb_panel_roads, wb_reshape_201405)
+panel_ch201405$viirsch<-panel_ch201405$viirs - panel_ch201405$viirs_201405
+#should be 6,729 equal to 0
+table(panel_ch201405$viirsch)
+
+##check maxl values assigned correctly
+wb_panel_201502<-wb_panel[wb_panel$Month==201502,]
+wb_reshape_201502<-wb_reshape[c("cell_id","maxl_201502","meanl_201502")]
+wb_panel_201502<-merge(wb_panel_201502, wb_reshape_201502)
+wb_panel_201502$maxlch<-wb_panel_201502$maxl - wb_panel_201502$maxl_201502
+wb_panel_201502$meanlch<-wb_panel_201502$meanl - wb_panel_201502$meanl_201502
+#should be 6,729 equal to 0
+table(wb_panel_201502$maxlch)
+table(wb_panel_201502$meanlch)
+
+## -----
+## Write to file
+## -----
 
 #create slim version for analysis
 
@@ -395,6 +454,7 @@ extra<-c("Month","maxl","meanl","viirs","PCBS_CO")
 slimvars<-c(trt,col_trt,id,date,dist,road,extra)
 wb_panel_slim <- wb_panel[slimvars]
 
+### UNDO THIS ********
 # paste in previous value for viirs missing data
 # 28 obs (19 unique cells) missing viirs data for various months, so using value from the closest non-NA following month
 # e.g. if 201502 is missing, then filled with 201503 value
