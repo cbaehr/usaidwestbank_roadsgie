@@ -2,9 +2,13 @@
 *Clear memory
 clear
 
+* Set local macros
+global project "/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie"
+
+
 *Import file
 
-import delimited "/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv", clear
+import delimited "$project/Data/wb_panel_slim_750m.csv", clear
 
 destring dist_trt2, force replace
 
