@@ -2,9 +2,10 @@
 *Clear memory
 clear
 
-* Set local macros
-global project "/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie"
 
+*Set local macros
+global project "/Users/careyglenn/Box Sync/usaidwestbank_roadsgie"
+global project "/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie"
 
 *Import file
 
