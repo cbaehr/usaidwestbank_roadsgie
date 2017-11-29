@@ -4,7 +4,7 @@ clear
 
 * Set local macros
 global project "/Users/rbtrichler/Box Sync"
-
+test
 
 *Import file
 
