@@ -13,6 +13,15 @@ import delimited "$project/Data/wb_panel_slim_750m.csv", clear
 
 destring dist_trt2, force replace
 
+*Generate categorical variables
+*Binned treatment distance
+egen dist_trt1cat = cut(dist_trt1), at (0, 1000, 2000, 3000, 4000, 5000, 6000) icodes
+*Binned viirs at month 0 
+bys cell_id: g viirs_at_m0 = viirs[1]
+egen viirscat = cut(viirs_at_m0), group(4) icodes
+*sum viirs_at_m0, detail
+*sum viirs_at_m0 if viirscat2==0
+*sum viirs_at_m0 if viirscat2==3
 
 * Regressions
 
