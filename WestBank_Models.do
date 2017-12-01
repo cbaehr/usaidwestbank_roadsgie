@@ -22,6 +22,8 @@ egen viirscat = cut(viirs_at_m0), group(4) icodes
 *sum viirs_at_m0, detail
 *sum viirs_at_m0 if viirscat2==0
 *sum viirs_at_m0 if viirscat2==3
+*Generate minimum distance to road out of trt1 and trt2
+egen mindist = rowmin(dist_trt1-dist_trt2)
 
 * Regressions
 
@@ -38,6 +40,8 @@ reghdfe viirs c.trt1##c.dist_trt1 maxl i.month, cluster(pcbs_co month) absorb(ce
 outreg2 using myreg.doc, append keep(trt1 maxl c.trt1##c.dist_trt1) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 * adds binned distance interaction with trt1
+reghdfe viirs c.trt1##c.dist_trt1cat maxl i.month, cluster(pcbs_co month) absorb(cell_id)
+outreg2 using myreg.doc, append keep(trt1 maxl c.trt1##c.dist_trt1cat) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *adds second treatment, no distance interaction
 reghdfe viirs trt1 trt2 maxl i.month, cluster(pcbs_co month) absorb(cell_id)
