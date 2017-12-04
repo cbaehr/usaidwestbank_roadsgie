@@ -53,31 +53,31 @@ outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Mont
 
 *Model 8, or Model 1 less maxl
 reghdfe viirs trt1 month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, replace addtext ("Grid cell FEs", Y, "Month FEs", N)
+outreg2 using myreg2.doc, replace addtext ("Grid cell FEs", Y, "Month FEs", N)
 
 *Model 9, or Model 2 less maxl
 reghdfe viirs trt1 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, append keep(trt1 maxl) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg2.doc, append keep(trt1 maxl) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 10, or Model 3 less maxl
 reghdfe viirs c.trt1##c.dist_trt1 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, append keep(trt1 maxl c.trt1##c.dist_trt1) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg2.doc, append keep(trt1 maxl c.trt1##c.dist_trt1) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 11, or Model 4 less maxl
 reghdfe viirs c.trt1##c.dist_trt1cat i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, append keep(trt1 maxl c.trt1##c.dist_trt1cat) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg2.doc, append keep(trt1 maxl c.trt1##c.dist_trt1cat) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 12, or Model 5 less maxl
 reghdfe viirs trt1 trt2 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 13, or Model 6 less maxl
 reghdfe viirs c.trt1##c.mindist trt2 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 14, or Model 7 less maxl
 reghdfe viirs trt1 trt2 trt3 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 
 *remake models above w/o maxl, myreg2.doc
