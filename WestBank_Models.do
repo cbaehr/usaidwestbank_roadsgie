@@ -44,13 +44,54 @@ outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Mont
 reghdfe viirs trt1 trt2 maxl i.month, cluster(pcbs_co month) absorb(cell_id)
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
-*Model 6, adds trt1 interaction w mindist, trt2 interaction w mindist
-reghdfe viirs maxl c.trt1##c.mindist trt2 i.month, cluster(pcbs_co month) absorb(cell_id)
+*Model 6, adds trt1, trt2 interaction w mindist
+reghdfe viirs maxl trt1 c.trt2##c.mindist i.month, cluster(pcbs_co month) absorb(cell_id)
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 7, adds third treatment, no distance interaction
 reghdfe viirs trt1 trt2 trt3 maxl i.month, cluster(pcbs_co month) absorb(cell_id)
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+
+* trt1 with viirs at month 0 interactions
+reghdfe viirs c.trt1##c.viirscat maxl i.month, cluster (pcbs_co month) absorb(cell_id)
+outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
+
+* trt1 interact with governorate
+*reghdfe viirs c.trt1##c.governorat maxl i.month, cluster (pcbs_co month) absorb(cell_id)
+*outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
+
+
+
+** Recreate regression models with 6 months prior placebo treatment variable
+
+*Model 1, with linear month
+reghdfe viirs trt1_6mp maxl month, cluster(pcbs_co month) absorb(cell_id)
+outreg2 using myreg3.doc, replace addtext ("Grid cell FEs", Y, "Month FEs", N)
+
+*Model 2, adds month fixed effects
+reghdfe viirs trt1_6mp maxl i.month, cluster(pcbs_co month) absorb(cell_id)
+outreg2 using myreg3.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+
+*Model 3, adds trt1 interaction with distance
+reghdfe viirs c.trt1_6mp##c.dist_trt1 maxl i.month, cluster(pcbs_co month) absorb(cell_id)
+outreg2 using myreg3.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+
+*Model 4, adds binned distance interaction with trt1
+reghdfe viirs c.trt1_6mp##c.dist_trt1cat maxl i.month, cluster(pcbs_co month) absorb(cell_id)
+outreg2 using myreg3.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+
+* trt1 with viirs at month 0 interactions
+reghdfe viirs c.trt1_6mp##c.viirscat maxl i.month, cluster (pcbs_co month) absorb(cell_id)
+outreg2 using myreg3.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
+
+* trt1 interact with governorate
+*reghdfe viirs c.trt1_6mp##c.governorat maxl i.month, cluster (pcbs_co month) absorb(cellid)
+*outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
+
+
+
+
+** Recreate regression models without maxl
 
 *Model 8, or Model 1 less maxl
 reghdfe viirs trt1 month, cluster(pcbs_co month) absorb(cell_id)
@@ -79,6 +120,10 @@ outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Mon
 *Model 14, or Model 7 less maxl
 reghdfe viirs trt1 trt2 trt3 i.month, cluster(pcbs_co month) absorb(cell_id)
 outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+
+* adds interaction with viirscat
+reghdfe viirs c.trt1##c.viirscat maxl i.month, cluster (pcbs_co month) absorb(cell_id)
+outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
 
 
 *remake models above w/o maxl, myreg2.doc
