@@ -8,6 +8,7 @@ global project "/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie"
 *Import file
 import delimited "$project/Data/wb_panel_slim_750m.csv", clear
 destring dist_trt2, force replace
+destring viirs, force replace
 
 *Generate categorical variables
 *Binned treatment distance
@@ -29,15 +30,15 @@ outreg2 using myreg.doc, replace addtext ("Grid cell FEs", Y, "Month FEs", N)
 
 *Model 2, adds month fixed effects
 reghdfe viirs trt1 maxl i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, append keep(trt1 maxl) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 3, adds trt1 interaction with distance
 reghdfe viirs c.trt1##c.dist_trt1 maxl i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, append keep(trt1 maxl c.trt1##c.dist_trt1) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 4, adds binned distance interaction with trt1
 reghdfe viirs c.trt1##c.dist_trt1cat maxl i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg.doc, append keep(trt1 maxl c.trt1##c.dist_trt1cat) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 5, adds second treatment, no distance interaction
 reghdfe viirs trt1 trt2 maxl i.month, cluster(pcbs_co month) absorb(cell_id)
@@ -57,15 +58,15 @@ outreg2 using myreg2.doc, replace addtext ("Grid cell FEs", Y, "Month FEs", N)
 
 *Model 9, or Model 2 less maxl
 reghdfe viirs trt1 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg2.doc, append keep(trt1 maxl) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 10, or Model 3 less maxl
 reghdfe viirs c.trt1##c.dist_trt1 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg2.doc, append keep(trt1 maxl c.trt1##c.dist_trt1) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 11, or Model 4 less maxl
 reghdfe viirs c.trt1##c.dist_trt1cat i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg2.doc, append keep(trt1 maxl c.trt1##c.dist_trt1cat) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 12, or Model 5 less maxl
 reghdfe viirs trt1 trt2 i.month, cluster(pcbs_co month) absorb(cell_id)
