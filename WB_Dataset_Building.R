@@ -15,6 +15,8 @@ library(stringdist)
 library(plyr)
 library(devtools)
 library(maptools)
+library(mondate)
+library(geojsonio)
 devtools::install_github("shuyang1987/multilevelMatching")
 library(multilevelMatching)
 # devtools::install_github("itpir/SCI@master")
@@ -313,6 +315,10 @@ wb_cells3 <- join(x=wb_cells, y=muni, by="cell_id", type="left")
 
 wb_cells<-wb_cells3
 
+## Create shapefile with variable information at cell level
+wb_cells_shp<-geojsonio::geojson_read("Data/data_geojsons/road_grid_750_final.geojson",what="sp")
+wb_cells_shp <- merge(wb_cells_shp,wb_cells)
+writePolyShape(wb_cells_shp,"Data/wb_cells_shp.shp")
 
 #------------
 # Create Panel Dataset
@@ -369,8 +375,130 @@ summary(wb_panel$trt4)
 table(wb_panel$trt4)
 table(wb_panel$date_trt4_ym)
 
+#----
+# Robustness Check and other Modeling Variables
+#----
+
+#create placebo treatment variable that turns on 6 months before trt1 and then back to 0
+wb_panel$date_trt1_6mp<-NA
+wb_panel$date_trt1_6mp <- mondate(wb_panel$date_trt1) - 6
+#check that number of cells and dates line up correctly between original and placebo variables
+table(wb_panel$date_trt1)
+table(wb_panel$date_trt1_6mp)
+#check visually for random cells
+wb_panel_6mp <- wb_panel[c("cell_id","date_trt1","date_trt1_6mp")]
+#create 6 month placebo treatment variable using new treatment date
+wb_panel$date_trt1_6mp<-as.Date(wb_panel$date_trt1_6mp)
+wb_panel$date_trt1_6mp_ym<-as.numeric(format(wb_panel$date_trt1_6mp,format="%Y%m"))
+#should only turn on for 6 months prior to actual treatment, then should go back to 0
+wb_panel$trt1_6mp<-NA
+wb_panel$trt1_6mp[which(wb_panel$Month<wb_panel$date_trt1_6mp_ym)]<-0
+wb_panel$trt1_6mp[which(wb_panel$Month>=wb_panel$date_trt1_6mp_ym)]<-1
+wb_panel$trt1_6mp[which(wb_panel$Month>=wb_panel$date_trt1_ym)]<-0
+#check visually for random cells
+wb_panel_6mp <- wb_panel[c("cell_id","Month","date_trt1","date_trt1_6mp","trt1","trt1_6mp")]
+
+## -----
+## Write to file
+## -----
+
+
+
+
+#create slim version for analysis
+
+trt<-paste(colnames(wb_panel)[grep("^trt",colnames(wb_panel))])
+col_trt<-paste(colnames(wb_panel)[grep("col_trt",colnames(wb_panel))])
+id<-paste(colnames(wb_panel)[grep("*_id",colnames(wb_panel))])
+date<-paste(colnames(wb_panel)[grep("*date",colnames(wb_panel))])
+dist<-paste(colnames(wb_panel)[grep("*dist",colnames(wb_panel))])
+road<-paste(colnames(wb_panel)[grep("*road",colnames(wb_panel))])
+extra<-c("Month","maxl","meanl","viirs","PCBS_CO")
+
+slimvars<-c(trt,col_trt,id,date,dist,road,extra)
+wb_panel_slim <- wb_panel[slimvars]
+
+## Write slim panel data to file
+
+write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
+#wb_panel_slim <- read.csv("/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
+
+
+
+
+
+#---------------
+##SCRATCH BEGINS
+#---------------
+
+## Addressing missing viirs for a small number of observations
+## DID NOT end up doing this for final dataset
+#testing how to replace NAs in viirs observations (28 NAs out of 383,553 obs)
+viirsNAs<-wb_panel_slim[is.na(wb_panel_slim$viirs),]
+list_NA<-c(viirsNAs$cell_id)
+
+test<-wb_panel_slim[(wb_panel_slim$cell_id %in% list_NA),]
+test<-test[c(65,141:145)]
+test1<-test %>%
+  group_by(cell_id) %>%
+  fill(viirs, .direction="up") 
+
+# paste in previous value for viirs missing data
+# 28 obs (19 unique cells) missing viirs data for various months, so using value from the closest non-NA following month
+# e.g. if 201502 is missing, then filled with 201503 value
+# see "scratch" section for test code that is easier to check values
+
+test<-wb_panel_slim
+test1<-test %>%
+  group_by(cell_id) %>%
+  fill(viirs, .direction="up")
+summary(wb_panel_slim$viirs)
+summary(test1$viirs)
+wb_panel_slim<-test1
+
+
+
+#x_merged$trt_col<-strsplit(x_merged$date_trt,";")
+#x_merged %>% separate(date_trt,c("trt_date","trt_col"),";")
+
+# x_merged %>% separate(date_trt,c("trt_date","trt_col"),";")
+# before %>%
+#   separate(type, c("foo", "bar"), "_and_")
+# 
+# x_merged$test<-sapply(colnames(x_merged),1,function(name){paste0(name)},simplify=F)
+# x_merged$test<-apply(x_merged[c(29:37)],1,function(x) {paste(names(x_merged))},rev(sort(x,decreasing=TRUE))[1])
+# 
+# x_merged$test<-apply(x_merged[c(29:37)],1,function(x) {paste0(rank(x),sep=",")})
+# 
+# a<-x_merged[29:37]
+# x_merged$test<-paste0(rank(a),sep=",")
+# 
+# 
+# x_merged$trt_col<-
+# df2 <- as.data.frame(sapply(colnames(df),
+#                             function(name){ paste(name,df[,name],sep=", ")},
+#                             simplify=F)
+
+# #loop-ified code to create a variable "trt_col" which contains the number of the treatment columns (1-9)
+# #is usually 1, but date columns are not always in chronological order
+# #for(i in 1:9)
+# #{
+#   x_merged[["trt_col"]][x_merged[["date_trt"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt2_col"]][x_merged[["date_trt2"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt3_col"]][x_merged[["date_trt3"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt4_col"]][x_merged[["date_trt4"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt5_col"]][x_merged[["date_trt5"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt6_col"]][x_merged[["date_trt6"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt7_col"]][x_merged[["date_trt7"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt8_col"]][x_merged[["date_trt8"]] == x_merged[[paste0("date_", i)]]] <- i
+#   x_merged[["trt9_col"]][x_merged[["date_trt9"]] == x_merged[[paste0("date_", i)]]] <- i
+#   
+# #}
+
+
+
 ##----
-## Check panel construction 
+## QA CHECK PANEL CONSTRUCTION -- repeat if change any of coding inputs
 ##---
 
 ## check panel construction
@@ -408,7 +536,7 @@ paneldates_ch<-merge(wb_panel_roads, inpii_ch, by.x="id_a",by.y="road_id")
 #create difference variable, and all values should be equal to zero because date in each column matches
 paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
 table(paneldates_ch$date_ch)
-#double checks that the values actually matter in this construction 
+#double checks that the values actually matter in this construction
 paneldates_ch$ACTUAL_COM<-27
 table(paneldates_ch$ACTUAL_COM)
 paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
@@ -436,102 +564,6 @@ wb_panel_201502$meanlch<-wb_panel_201502$meanl - wb_panel_201502$meanl_201502
 #should be 6,729 equal to 0
 table(wb_panel_201502$maxlch)
 table(wb_panel_201502$meanlch)
-
-## -----
-## Write to file
-## -----
-
-#create slim version for analysis
-
-trt<-paste(colnames(wb_panel)[grep("^trt",colnames(wb_panel))])
-col_trt<-paste(colnames(wb_panel)[grep("col_trt",colnames(wb_panel))])
-id<-paste(colnames(wb_panel)[grep("*_id",colnames(wb_panel))])
-date<-paste(colnames(wb_panel)[grep("*date",colnames(wb_panel))])
-dist<-paste(colnames(wb_panel)[grep("*dist",colnames(wb_panel))])
-road<-paste(colnames(wb_panel)[grep("*road",colnames(wb_panel))])
-extra<-c("Month","maxl","meanl","viirs","PCBS_CO")
-
-slimvars<-c(trt,col_trt,id,date,dist,road,extra)
-wb_panel_slim <- wb_panel[slimvars]
-
-### UNDO THIS ********
-# paste in previous value for viirs missing data
-# 28 obs (19 unique cells) missing viirs data for various months, so using value from the closest non-NA following month
-# e.g. if 201502 is missing, then filled with 201503 value
-# see "scratch" section for test code that is easier to check values
-
-test<-wb_panel_slim
-test1<-test %>%
-  group_by(cell_id) %>%
-  fill(viirs, .direction="up")
-summary(wb_panel_slim$viirs)
-summary(test1$viirs)
-wb_panel_slim<-test1
-
-
-## Write panel data to file
-
-write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
-#wb_panel_slim <- read.csv("/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
-
-
-
-#---------------
-##SCRATCH BEGINS
-#---------------
-
-#testing how to replace NAs in viirs observations (28 NAs out of 383,553 obs)
-viirsNAs<-wb_panel_slim[is.na(wb_panel_slim$viirs),]
-list_NA<-c(viirsNAs$cell_id)
-
-test<-wb_panel_slim[(wb_panel_slim$cell_id %in% list_NA),]
-test<-test[c(65,141:145)]
-test1<-test %>%
-  group_by(cell_id) %>%
-  fill(viirs, .direction="up") 
-
-
-
-
-#x_merged$trt_col<-strsplit(x_merged$date_trt,";")
-#x_merged %>% separate(date_trt,c("trt_date","trt_col"),";")
-
-# x_merged %>% separate(date_trt,c("trt_date","trt_col"),";")
-# before %>%
-#   separate(type, c("foo", "bar"), "_and_")
-# 
-# x_merged$test<-sapply(colnames(x_merged),1,function(name){paste0(name)},simplify=F)
-# x_merged$test<-apply(x_merged[c(29:37)],1,function(x) {paste(names(x_merged))},rev(sort(x,decreasing=TRUE))[1])
-# 
-# x_merged$test<-apply(x_merged[c(29:37)],1,function(x) {paste0(rank(x),sep=",")})
-# 
-# a<-x_merged[29:37]
-# x_merged$test<-paste0(rank(a),sep=",")
-# 
-# 
-# x_merged$trt_col<-
-# df2 <- as.data.frame(sapply(colnames(df),
-#                             function(name){ paste(name,df[,name],sep=", ")},
-#                             simplify=F)
-
-## NEED TO FIGURE OUT; currently pastes number from final column
-# #loop-ified code to create a variable "trt_col" which contains the number of the treatment columns (1-9)
-# #is usually 1, but date columns are not always in chronological order
-# #for(i in 1:9)
-# #{
-#   x_merged[["trt_col"]][x_merged[["date_trt"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt2_col"]][x_merged[["date_trt2"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt3_col"]][x_merged[["date_trt3"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt4_col"]][x_merged[["date_trt4"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt5_col"]][x_merged[["date_trt5"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt6_col"]][x_merged[["date_trt6"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt7_col"]][x_merged[["date_trt7"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt8_col"]][x_merged[["date_trt8"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt9_col"]][x_merged[["date_trt9"]] == x_merged[[paste0("date_", i)]]] <- i
-#   
-# #}
-
-### SCRATCH ENDS
 
 
 
