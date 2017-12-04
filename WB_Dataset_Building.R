@@ -315,10 +315,7 @@ wb_cells3 <- join(x=wb_cells, y=muni, by="cell_id", type="left")
 
 wb_cells<-wb_cells3
 
-## Create shapefile with variable information at cell level
-wb_cells_shp<-geojsonio::geojson_read("Data/data_geojsons/road_grid_750_final.geojson",what="sp")
-wb_cells_shp <- merge(wb_cells_shp,wb_cells)
-writePolyShape(wb_cells_shp,"Data/wb_cells_shp.shp")
+
 
 #------------
 # Create Panel Dataset
@@ -402,8 +399,8 @@ wb_panel_6mp <- wb_panel[c("cell_id","Month","date_trt1","date_trt1_6mp","trt1",
 ## Write to file
 ## -----
 
-
-
+# Write full version of panel data to file
+write.csv(wb_panel,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_full_750m.csv")
 
 #create slim version for analysis
 
@@ -413,7 +410,7 @@ id<-paste(colnames(wb_panel)[grep("*_id",colnames(wb_panel))])
 date<-paste(colnames(wb_panel)[grep("*date",colnames(wb_panel))])
 dist<-paste(colnames(wb_panel)[grep("*dist",colnames(wb_panel))])
 road<-paste(colnames(wb_panel)[grep("*road",colnames(wb_panel))])
-extra<-c("Month","maxl","meanl","viirs","PCBS_CO")
+extra<-c("Month","maxl","meanl","viirs","PCBS_CO","GOVERNORAT")
 
 slimvars<-c(trt,col_trt,id,date,dist,road,extra)
 wb_panel_slim <- wb_panel[slimvars]
@@ -424,6 +421,14 @@ write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/
 #wb_panel_slim <- read.csv("/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
 
 
+## Write wb_cells to csv
+write.csv(wb_cells,"Data/wb_cells.csv")
+
+## Create shapefile with variable information at cell level and write to file
+# need to rewrite if change anything in wb_cells
+wb_cells_shp<-geojsonio::geojson_read("Data/data_geojsons/road_grid_750_final.geojson",what="sp")
+wb_cells_shp <- merge(wb_cells_shp,wb_cells)
+writePolyShape(wb_cells_shp,"Data/wb_cells_shp.shp")
 
 
 
@@ -432,7 +437,7 @@ write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/
 #---------------
 
 ## Addressing missing viirs for a small number of observations
-## DID NOT end up doing this for final dataset
+## DID NOT end up doing this for final dataset since so few NAs
 #testing how to replace NAs in viirs observations (28 NAs out of 383,553 obs)
 viirsNAs<-wb_panel_slim[is.na(wb_panel_slim$viirs),]
 list_NA<-c(viirsNAs$cell_id)
