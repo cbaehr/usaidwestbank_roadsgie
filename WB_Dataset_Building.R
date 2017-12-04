@@ -15,6 +15,8 @@ library(stringdist)
 library(plyr)
 library(devtools)
 library(maptools)
+library(mondate)
+library(geojsonio)
 devtools::install_github("shuyang1987/multilevelMatching")
 library(multilevelMatching)
 # devtools::install_github("itpir/SCI@master")
@@ -313,6 +315,10 @@ wb_cells3 <- join(x=wb_cells, y=muni, by="cell_id", type="left")
 
 wb_cells<-wb_cells3
 
+## Create shapefile with variable information at cell level
+wb_cells_shp<-geojsonio::geojson_read("Data/data_geojsons/road_grid_750_final.geojson",what="sp")
+wb_cells_shp <- merge(wb_cells_shp,wb_cells)
+writePolyShape(wb_cells_shp,"Data/wb_cells_shp.shp")
 
 #------------
 # Create Panel Dataset
@@ -369,73 +375,28 @@ summary(wb_panel$trt4)
 table(wb_panel$trt4)
 table(wb_panel$date_trt4_ym)
 
-# ##----
-# ## QA CHECK PANEL CONSTRUCTION 
-# ##---
-# 
-# ## check panel construction
-# View(wb_panel[1:100])
-# View(wb_panel[100:177])
-# 
-# wb_panel_ch <- wb_panel[wb_panel$cell_id<220,]
-# ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
-# wb_panel_ch <- wb_panel_ch[ch_vars]
-# wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
-# View(wb_panel_ch[100:177])
-# View(wb_reshape[100:200])
-# View(wb_reshape[200:300])
-# 
-# ## check that names of one road segment match the names from the buffers input file
-# # road_id=17 is Al Menya Landfill and it was the earliest treatment date, so should show up a lot in trt1 columns and use it to check dataset construction
-# wb_panel_roads<-wb_panel[wb_panel$Month==201405,]
-# road17_ch<-merge(wb_panel_roads, buffers, by.x="id_a", by.y="road_id")
-# #number of cells that fall in id_a==17 should match number that fall in road_a=Al Menya Landfill
-# table(road17_ch$id_a)
-# table(road17_ch$id_a)
-# #check summary stats for subset of only road_id=17
-# road17_ch<-road17_ch[road17_ch$id_a==17,]
-# #should match number of cells from above and should only be equal to 17
-# table(road17_ch$id_a)
-# #only non-zero value should be in Al Menya Landfill Road
-# table(road17_ch$Name)
-# #trt1 should all be equal to 1
-# table(road17_ch$trt1)
-# 
-# ## check that completion dates match the dates from the buffers input file
-# #shorten inpii_data to just ids, names, completion date and merge with wb_panel_roads
-# inpii_ch<-inpii_data[c(1,10,15:17,98)]
-# paneldates_ch<-merge(wb_panel_roads, inpii_ch, by.x="id_a",by.y="road_id")
-# #create difference variable, and all values should be equal to zero because date in each column matches
-# paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
-# table(paneldates_ch$date_ch)
-# #double checks that the values actually matter in this construction 
-# paneldates_ch$ACTUAL_COM<-27
-# table(paneldates_ch$ACTUAL_COM)
-# paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
-# table(paneldates_ch$date_ch)
-# 
-# ## check treatment var construction using paneldates_ch
-# table(paneldates_ch$date_trt1_ym)
-# #trt1 should equal 1 for all cells with a trt1_ym before 201406(since used 201405 as cut off to subset wb_panel_roads)
-# #when add those cells up, should equal 2,573 equal to 1; 4156 equal to 0
-# table(paneldates_ch$trt1)
-# 
-# ##check viirs values assigned correctly
-# wb_reshape_201405<-wb_reshape[c("cell_id","viirs_201405")]
-# panel_ch201405<-merge(wb_panel_roads, wb_reshape_201405)
-# panel_ch201405$viirsch<-panel_ch201405$viirs - panel_ch201405$viirs_201405
-# #should be 6,729 equal to 0
-# table(panel_ch201405$viirsch)
-# 
-# ##check maxl values assigned correctly
-# wb_panel_201502<-wb_panel[wb_panel$Month==201502,]
-# wb_reshape_201502<-wb_reshape[c("cell_id","maxl_201502","meanl_201502")]
-# wb_panel_201502<-merge(wb_panel_201502, wb_reshape_201502)
-# wb_panel_201502$maxlch<-wb_panel_201502$maxl - wb_panel_201502$maxl_201502
-# wb_panel_201502$meanlch<-wb_panel_201502$meanl - wb_panel_201502$meanl_201502
-# #should be 6,729 equal to 0
-# table(wb_panel_201502$maxlch)
-# table(wb_panel_201502$meanlch)
+#----
+# Robustness Check and other Modeling Variables
+#----
+
+#create placebo treatment variable that turns on 6 months before trt1 and then back to 0
+wb_panel$date_trt1_6mp<-NA
+wb_panel$date_trt1_6mp <- mondate(wb_panel$date_trt1) - 6
+#check that number of cells and dates line up correctly between original and placebo variables
+table(wb_panel$date_trt1)
+table(wb_panel$date_trt1_6mp)
+#check visually for random cells
+wb_panel_6mp <- wb_panel[c("cell_id","date_trt1","date_trt1_6mp")]
+#create 6 month placebo treatment variable using new treatment date
+wb_panel$date_trt1_6mp<-as.Date(wb_panel$date_trt1_6mp)
+wb_panel$date_trt1_6mp_ym<-as.numeric(format(wb_panel$date_trt1_6mp,format="%Y%m"))
+#should only turn on for 6 months prior to actual treatment, then should go back to 0
+wb_panel$trt1_6mp<-NA
+wb_panel$trt1_6mp[which(wb_panel$Month<wb_panel$date_trt1_6mp_ym)]<-0
+wb_panel$trt1_6mp[which(wb_panel$Month>=wb_panel$date_trt1_6mp_ym)]<-1
+wb_panel$trt1_6mp[which(wb_panel$Month>=wb_panel$date_trt1_ym)]<-0
+#check visually for random cells
+wb_panel_6mp <- wb_panel[c("cell_id","Month","date_trt1","date_trt1_6mp","trt1","trt1_6mp")]
 
 ## -----
 ## Write to file
@@ -461,6 +422,8 @@ wb_panel_slim <- wb_panel[slimvars]
 
 write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
 #wb_panel_slim <- read.csv("/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
+
+
 
 
 
@@ -516,7 +479,6 @@ wb_panel_slim<-test1
 #                             function(name){ paste(name,df[,name],sep=", ")},
 #                             simplify=F)
 
-## NEED TO FIGURE OUT; currently pastes number from final column
 # #loop-ified code to create a variable "trt_col" which contains the number of the treatment columns (1-9)
 # #is usually 1, but date columns are not always in chronological order
 # #for(i in 1:9)
@@ -533,7 +495,75 @@ wb_panel_slim<-test1
 #   
 # #}
 
-### SCRATCH ENDS
+
+
+##----
+## QA CHECK PANEL CONSTRUCTION -- repeat if change any of coding inputs
+##---
+
+## check panel construction
+View(wb_panel[1:100])
+View(wb_panel[100:177])
+
+wb_panel_ch <- wb_panel[wb_panel$cell_id<220,]
+ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
+wb_panel_ch <- wb_panel_ch[ch_vars]
+wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
+View(wb_panel_ch[100:177])
+View(wb_reshape[100:200])
+View(wb_reshape[200:300])
+
+## check that names of one road segment match the names from the buffers input file
+# road_id=17 is Al Menya Landfill and it was the earliest treatment date, so should show up a lot in trt1 columns and use it to check dataset construction
+wb_panel_roads<-wb_panel[wb_panel$Month==201405,]
+road17_ch<-merge(wb_panel_roads, buffers, by.x="id_a", by.y="road_id")
+#number of cells that fall in id_a==17 should match number that fall in road_a=Al Menya Landfill
+table(road17_ch$id_a)
+table(road17_ch$id_a)
+#check summary stats for subset of only road_id=17
+road17_ch<-road17_ch[road17_ch$id_a==17,]
+#should match number of cells from above and should only be equal to 17
+table(road17_ch$id_a)
+#only non-zero value should be in Al Menya Landfill Road
+table(road17_ch$Name)
+#trt1 should all be equal to 1
+table(road17_ch$trt1)
+
+## check that completion dates match the dates from the buffers input file
+#shorten inpii_data to just ids, names, completion date and merge with wb_panel_roads
+inpii_ch<-inpii_data[c(1,10,15:17,98)]
+paneldates_ch<-merge(wb_panel_roads, inpii_ch, by.x="id_a",by.y="road_id")
+#create difference variable, and all values should be equal to zero because date in each column matches
+paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
+table(paneldates_ch$date_ch)
+#double checks that the values actually matter in this construction
+paneldates_ch$ACTUAL_COM<-27
+table(paneldates_ch$ACTUAL_COM)
+paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
+table(paneldates_ch$date_ch)
+
+## check treatment var construction using paneldates_ch
+table(paneldates_ch$date_trt1_ym)
+#trt1 should equal 1 for all cells with a trt1_ym before 201406(since used 201405 as cut off to subset wb_panel_roads)
+#when add those cells up, should equal 2,573 equal to 1; 4156 equal to 0
+table(paneldates_ch$trt1)
+
+##check viirs values assigned correctly
+wb_reshape_201405<-wb_reshape[c("cell_id","viirs_201405")]
+panel_ch201405<-merge(wb_panel_roads, wb_reshape_201405)
+panel_ch201405$viirsch<-panel_ch201405$viirs - panel_ch201405$viirs_201405
+#should be 6,729 equal to 0
+table(panel_ch201405$viirsch)
+
+##check maxl values assigned correctly
+wb_panel_201502<-wb_panel[wb_panel$Month==201502,]
+wb_reshape_201502<-wb_reshape[c("cell_id","maxl_201502","meanl_201502")]
+wb_panel_201502<-merge(wb_panel_201502, wb_reshape_201502)
+wb_panel_201502$maxlch<-wb_panel_201502$maxl - wb_panel_201502$maxl_201502
+wb_panel_201502$meanlch<-wb_panel_201502$meanl - wb_panel_201502$meanl_201502
+#should be 6,729 equal to 0
+table(wb_panel_201502$maxlch)
+table(wb_panel_201502$meanlch)
 
 
 
