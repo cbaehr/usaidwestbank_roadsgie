@@ -15,6 +15,7 @@ library(stringdist)
 library(plyr)
 library(devtools)
 library(maptools)
+library(tidyr)
 library(mondate)
 library(geojsonio)
 devtools::install_github("shuyang1987/multilevelMatching")
@@ -262,7 +263,6 @@ x_merged1<-x_merged1[,-grep("date_colnum",colnames(x_merged1))]
 x_merged1<-x_merged1[,-grep("datenum_trt",colnames(x_merged1))]
 x_merged<-x_merged1
 
-#fix formatting of date columns to be recognizable as dates and split into month, day, year
 #loop-ified code to create the treatment road distances
 
 for(i in buffergrp)
@@ -278,6 +278,7 @@ for(i in buffergrp)
   x_merged[["dist_trt9"]][x_merged[["col_trt9"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt9"]]==i]
 }
 
+#fix formatting of date columns to be recognizable as dates and split into month, day, year
 #loop-ified code to put the treatment date columns in standard date format for easier manipulation
 temp_col_list <- c("trt1", "trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8","trt9")
 for(i in temp_col_list)
@@ -288,6 +289,7 @@ for(i in temp_col_list)
   x_merged[[paste0("date_", i, "_y")]] = as.numeric(format(x_merged[[paste0("date_", i)]], format = "%Y"))
   x_merged[[paste0("date_", i, "_ym")]] = as.numeric(format(x_merged[[paste0("date_", i)]], format = "%Y%m"))
 }
+
 
 #-------
 # Prepare Wide Dataset for Panel Conversion
@@ -314,7 +316,6 @@ muni <- muni[,-grep("geometry",names(muni))]
 wb_cells3 <- join(x=wb_cells, y=muni, by="cell_id", type="left")
 
 wb_cells<-wb_cells3
-
 
 
 #------------
@@ -401,6 +402,7 @@ wb_panel_6mp <- wb_panel[c("cell_id","Month","date_trt1","date_trt1_6mp","trt1",
 
 # Write full version of panel data to file
 write.csv(wb_panel,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_full_750m.csv")
+wb_panel <- read.csv ("/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_full_750m.csv")
 
 #create slim version for analysis
 
@@ -423,12 +425,25 @@ write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/
 
 ## Write wb_cells to csv
 write.csv(wb_cells,"Data/wb_cells.csv")
+wb_cells <- read.csv("Data/wb_cells.csv")
 
 ## Create shapefile with variable information at cell level and write to file
 # need to rewrite if change anything in wb_cells
 wb_cells_shp<-geojsonio::geojson_read("Data/data_geojsons/road_grid_750_final.geojson",what="sp")
 wb_cells_shp <- merge(wb_cells_shp,wb_cells)
 writePolyShape(wb_cells_shp,"Data/wb_cells_shp.shp")
+
+
+# -------
+# Tables
+# -------
+
+## Summary Stats Table
+
+stargazer(wb_cells, type="html",
+          keep=c("viirs_201204","viirs_201612","dist_trt1","dist_trt2","dist_trt3"))
+
+
 
 
 
@@ -569,6 +584,9 @@ wb_panel_201502$meanlch<-wb_panel_201502$meanl - wb_panel_201502$meanl_201502
 #should be 6,729 equal to 0
 table(wb_panel_201502$maxlch)
 table(wb_panel_201502$meanlch)
+
+
+
 
 
 
