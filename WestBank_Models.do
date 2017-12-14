@@ -8,6 +8,7 @@ global project "/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie"
 *Import file
 import delimited "$project/Data/wb_panel_slim_750m.csv", clear
 destring dist_trt2, force replace
+destring dist_trt3, force replace
 destring viirs, force replace
 
 * Generate Variables
@@ -141,7 +142,7 @@ reghdfe viirs trt1 trt2 trt3 i.month, cluster(pcbs_co month) absorb(cell_id)
 outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 * adds interaction with viirscat
-reghdfe viirs c.trt1##viirscat maxl i.month, cluster (pcbs_co month) absorb(cell_id)
+reghdfe viirs trt1##viirscat maxl i.month, cluster (pcbs_co month) absorb(cell_id)
 outreg2 using myreg2.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
 
 bys cell_id: g viirs_at_m0 = viirs[1]
