@@ -1,5 +1,10 @@
 
-#rebuild West_Bank_Dataset_Building with new Seth extracts (rather than materials from Tyler)
+
+# ------------
+# Dataset for ever treated cells only
+# Does not include cells that only fall within the buffers of road segments not treated between 2013 and 2016
+# ------------------
+
 
 #clear variables and values
 rm(list=ls())
@@ -18,14 +23,11 @@ library(maptools)
 library(tidyr)
 library(mondate)
 library(geojsonio)
-devtools::install_github("shuyang1987/multilevelMatching")
-library(multilevelMatching)
-# devtools::install_github("itpir/SCI@master")
-# library(SCI)
 
 
 ##-------
 ##Create list of road segment/buffer names, ids, and final completion dates
+# Remove buffers that are not completed by December 2016 
 ##-------
 
 ## get road/buffer ids from buffer shapefile used to create our sample of cells
@@ -37,6 +39,7 @@ buffers<-st_read(buffers)
 #OBJECTID_1 includes 1-52, 55-61 (skips 53 and 54 for some reason, but should be 59 road segments total)
 names(buffers)[names(buffers)=='OBJECTID_1']<-'road_id'
 buffers<-buffers[c(2,4:9)]
+#buffers<-buffers[1:30,]
 #extract geometry and convert to dataframe
 buffers_geo<-st_geometry(buffers)
 st_geometry(buffers)<-NULL
@@ -44,11 +47,14 @@ buffers_geo <- st_set_geometry(as.data.frame(buffers$road_id),buffers_geo)
 #create unique list of names from buffers
 road_names_list <- unique(c(levels(buffers$Name)))
 
+list<-c(levels(buffers$Name))
+road_names_list<-list
+
 ##merge road/buffer ids with INPII csv (from Mission; includes completion dates)
 #input INPII csv and eliminate blank extra row so 59 obs total
 inpii_data <- read.csv("Data/INPIICSV_RoadsShapefile_Reconcile _comments_clean.csv",na.strings=c("","NA"))
 inpii_data<-inpii_data[!is.na(inpii_data$Name_INPIIRoadsProject_Line),]
-
+#inpii_data<-inpii_data[inpii_data$Status_INPIIRoadsProjects_Line=="Constructed",]
 #creates a list of the indices of the (fuzzy) matching names in INP II and road_names_list
 matched_list <- amatch(inpii_data[["Name_INPIIRoadsProject_Line"]], road_names_list, maxDist = 50)
 
@@ -63,11 +69,9 @@ inpii_data[["ACTUAL_COM"]][inpii_data[["ACTUAL_COM"]] == 9999] <- NA
 inpii_data$ACTUAL_COM <- as.Date(inpii_data$ACTUAL_COM, format = "%m/%d/%y")
 inpii_data[["ACTUAL_COM"]][is.na(inpii_data[["ACTUAL_COM"]])] <- "9999-01-01"
 
-#subset to list of road/buffers, ids, completion dates and export to GitRepo????
 
-#-------
-# Create grid cell level wide dataset
-#-------
+
+
 
 ## Read in geo(query) cell-level extracts
 #id_1, name_1, dist_1 (etc) columns identify 5 km buffer that each cells falls into, where the number at the end is the buffer id from buffers$road_id 
@@ -114,6 +118,11 @@ colnames(wb_cells) <- sub("ntl_yearly.","",colnames(wb_cells))
 colnames(wb_cells) <- sub("ntl_monthly.","",colnames(wb_cells))
 #dmsp ntl
 colnames(wb_cells) <- sub("v4composites_calibrated_201709.","dmsp_",colnames(wb_cells))
+
+# ******
+# DROP OUT UNTREATED BUFFERS
+# name_, id_, dist_ greater 31 and above
+wb_cells<-wb_cells[,c(1:372,460:579)]
 
 #-------
 # Create Treatment Variables
@@ -183,54 +192,61 @@ x_left <- cbind.data.frame(x_id_left$cell_id, x_id_left$id_1, x_road_name_left$r
                            x_id_left$id_9, x_road_name_left$road_9, x_dist_left$dist_9)
 #Check column bind by manually looking at a few random cell ids
 
+# REMOVE Unused Rows and Columns (i.e. all equal to NA)
+# remove unused rows
+x_left1<-x_left[!is.na(x_left$`x_id_left$id_1`),]
+summary(x_left$`x_id_left$id_1`)
+summary(x_left1$`x_id_left$id_1`)
+# remove unused columns - columns with _6 or more should be removed
+x_left2<-x_left1[,-grep("_6",colnames(x_left1))]
+x_left2<-x_left2[,-grep("_7",colnames(x_left2))]
+x_left2<-x_left2[,-grep("_8",colnames(x_left2))]
+x_left2<-x_left2[,-grep("_9",colnames(x_left2))]
+
+x_left<-x_left2
+
 #renames the colnames to the original names, using letters instead of numbers to group
 colnames(x_left) <- c("cell_id", "id_a", "road_a","dist_a",
                       "id_b", "road_b","dist_b",
                       "id_c", "road_c","dist_c",
                       "id_d", "road_d","dist_d",
-                      "id_e", "road_e","dist_e",
-                      "id_f", "road_f","dist_f",
-                      "id_g", "road_g","dist_g",
-                      "id_h", "road_h","dist_h",
-                      "id_j","road_j","dist_j")
+                      "id_e", "road_e","dist_e")
 x_merged<-x_left
 
-##merge in completion date for each set of road columns 1-9 to reflect date that road improvements completed for that road segment
+
+##merge in completion date for each set of road columns a-e to reflect date that road improvements completed for that road segment
 #subset inpii_data to road_id and actual completion date, to be used as treatment date
 #date is in YYYY-MM-DD (formatted earlier in script)
 date<-inpii_data[,c("road_id","ACTUAL_COM")]
 
 #merge in completion date based on id_1 for first set of road columns, set in date format
-buffergrp<-c("a","b","c","d","e","f","g","h","j")
+buffergrp<-c("a","b","c","d","e")
 for (i in buffergrp)
 {
-x_merged<-merge(x_merged, date,by.x=(paste0("id_",i)),by.y="road_id",all.x=TRUE)
-names(x_merged)[names(x_merged)=='ACTUAL_COM']<-paste0("date_",i)
-x_merged[[paste0("date_", i)]] <- as.Date(x_merged[[paste0("date_", i)]])
+  x_merged<-merge(x_merged, date,by.x=(paste0("id_",i)),by.y="road_id",all.x=TRUE)
+  names(x_merged)[names(x_merged)=='ACTUAL_COM']<-paste0("date_",i)
+  x_merged[[paste0("date_", i)]] <- as.Date(x_merged[[paste0("date_", i)]])
 }
+
 
 #create new column that concatenates date;column number for the associated date
 #column number will be used later for order of treatment dates
-#since a-i columns are not necessarily in date order, the earliest treatment date could be in col b,c, etc instead of col. a
+#since a-e columns are not necessarily in date order, the earliest treatment date could be in col b,c, etc instead of col. a
 for (i in buffergrp)
 {
   x_merged[[paste0("date_colnum",i)]]<-paste(x_merged[[paste0("date_",i)]],i,sep=";")
 }  
 
-#creates treatment date column for every buffer that a cell falls into, from buffer a to j (9 buffers is the max for one cell)
-#date_[a-j] columns are not necessarily in chronological order, so this identifies the earliest date from up to 9 date columns for each cell
-# includes the original a-j column letter as part of the value in order to identify which buffer group the date belongs to (will separate and use later)
+#creates treatment date column for every buffer that a cell falls into, from buffer a to e (5 buffers is the max for one cell)
+#date_[a-e] columns are not necessarily in chronological order, so this identifies the earliest date from up to 5 date columns for each cell
+# includes the original a-e column letter as part of the value in order to identify which buffer group the date belongs to (will separate and use later)
 #code uses specific position of date + column letter fields in the dataframe, so update code if positions changes
-# 1 is earliest treatment date, 9 is latest treatment date
-x_merged$datenum_trt1 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[1])
-x_merged$datenum_trt2 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[2])
-x_merged$datenum_trt3 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[3])
-x_merged$datenum_trt4 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[4])
-x_merged$datenum_trt5 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[5])
-x_merged$datenum_trt6 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[6])
-x_merged$datenum_trt7 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[7])
-x_merged$datenum_trt8 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[8])
-x_merged$datenum_trt9 <- apply(x_merged[c(38:46)],1,function(x) rev(sort(x,decreasing=TRUE))[9])
+# 1 is earliest treatment date, 5 is latest treatment date
+x_merged$datenum_trt1 <- apply(x_merged[c(22:26)],1,function(x) rev(sort(x,decreasing=TRUE))[1])
+x_merged$datenum_trt2 <- apply(x_merged[c(22:26)],1,function(x) rev(sort(x,decreasing=TRUE))[2])
+x_merged$datenum_trt3 <- apply(x_merged[c(22:26)],1,function(x) rev(sort(x,decreasing=TRUE))[3])
+x_merged$datenum_trt4 <- apply(x_merged[c(22:26)],1,function(x) rev(sort(x,decreasing=TRUE))[4])
+x_merged$datenum_trt5 <- apply(x_merged[c(22:26)],1,function(x) rev(sort(x,decreasing=TRUE))[5])
 
 #separates the date+column letter fields, now in descending order, in to separate date field and column field
 #can use column letter to join with road name and distance information
@@ -239,21 +255,17 @@ x_merged<-x_merged %>% separate(datenum_trt2,c("date_trt2","col_trt2"),";",remov
 x_merged<-x_merged %>% separate(datenum_trt3,c("date_trt3","col_trt3"),";",remove=FALSE)
 x_merged<-x_merged %>% separate(datenum_trt4,c("date_trt4","col_trt4"),";",remove=FALSE)
 x_merged<-x_merged %>% separate(datenum_trt5,c("date_trt5","col_trt5"),";",remove=FALSE)
-x_merged<-x_merged %>% separate(datenum_trt6,c("date_trt6","col_trt6"),";",remove=FALSE)
-x_merged<-x_merged %>% separate(datenum_trt7,c("date_trt7","col_trt7"),";",remove=FALSE)
-x_merged<-x_merged %>% separate(datenum_trt8,c("date_trt8","col_trt8"),";",remove=FALSE)
-x_merged<-x_merged %>% separate(datenum_trt9,c("date_trt9","col_trt9"),";",remove=FALSE)
 
-#x_merged has series of columns with _[1-9] that identify the road buffers that a single cell is part of (9 is max)
-# x_merged$date_[a-j] date that the road in each buffer a-j improvements were completed 
-# x_merged$date_colnum concatenates completion date and a-j buffer column letter that the completion date is associated with in order to put in descending order
-# x_merged$datenum_trt[1-9] series of columns that puts the date of improvements in chronological order, earliest to latest, with associated a-j buffer column letter attached at end
-# x_merged$date_trt[1-9] and col_trt[1-9] un-concatenate datenum_trt to give one column with the dates in earliest(1) to latest(9) order and another column with the a-j buffer column that it originally came from
+#x_merged has series of columns with _[1-5] that identify the road buffers that a single cell is part of (5 is max)
+# x_merged$date_[a-e] date that the road in each buffer a-e improvements were completed 
+# x_merged$date_colnum concatenates completion date and a-e buffer column letter that the completion date is associated with in order to put in descending order
+# x_merged$datenum_trt[1-5] series of columns that puts the date of improvements in chronological order, earliest to latest, with associated a-e buffer column letter attached at end
+# x_merged$date_trt[1-5] and col_trt[1-5] un-concatenate datenum_trt to give one column with the dates in earliest(1) to latest(5) order and another column with the a-e buffer column that it originally came from
 # can use col_trt to join in the buffer name, id, and distance information with the chronological order treatment date information (to determine distance to treated buffer for each separate treatment date)
 # some of these columns will not be used in final dataset and will be deleted later
 
 #replace "NA" in date_trt with NA values rather than string "NA"
-for (i in 1:9)
+for (i in 1:5)
 {
   x_merged[[paste0("date_trt",i)]][x_merged[[paste0("date_trt",i)]]=="NA"]<- NA
 }
@@ -264,7 +276,6 @@ x_merged1<-x_merged1[,-grep("datenum_trt",colnames(x_merged1))]
 x_merged<-x_merged1
 
 #loop-ified code to create the treatment road distances
-
 for(i in buffergrp)
 {
   x_merged[["dist_trt1"]][x_merged[["col_trt1"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt1"]]==i]
@@ -272,15 +283,10 @@ for(i in buffergrp)
   x_merged[["dist_trt3"]][x_merged[["col_trt3"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt3"]]==i]
   x_merged[["dist_trt4"]][x_merged[["col_trt4"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt4"]]==i]
   x_merged[["dist_trt5"]][x_merged[["col_trt5"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt5"]]==i]
-  x_merged[["dist_trt6"]][x_merged[["col_trt6"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt6"]]==i]
-  x_merged[["dist_trt7"]][x_merged[["col_trt7"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt7"]]==i]
-  x_merged[["dist_trt8"]][x_merged[["col_trt8"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt8"]]==i]
-  x_merged[["dist_trt9"]][x_merged[["col_trt9"]]==i]<-x_merged[[paste0("dist_",i)]][x_merged[["col_trt9"]]==i]
 }
 
-#fix formatting of date columns to be recognizable as dates and split into month, day, year
 #loop-ified code to put the treatment date columns in standard date format for easier manipulation
-temp_col_list <- c("trt1", "trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8","trt9")
+temp_col_list <- c("trt1", "trt2", "trt3", "trt4", "trt5")
 for(i in temp_col_list)
 {
   x_merged[[paste0("date_", i)]] <- as.Date(x_merged[[paste0("date_", i)]])
@@ -316,7 +322,6 @@ muni <- muni[,-grep("geometry",names(muni))]
 wb_cells3 <- join(x=wb_cells, y=muni, by="cell_id", type="left")
 
 wb_cells<-wb_cells3
-
 
 #------------
 # Create Panel Dataset
@@ -357,9 +362,9 @@ wb_panel$trt1[which(wb_panel$Month<wb_panel$date_trt1_ym)]<-0
 wb_panel$trt1[which(wb_panel$Month>=wb_panel$date_trt1_ym)]<-1
 View(wb_panel[100:178])
 #create dichotomous treatment variable for multiple treatments (i.e. cell present in more than one buffer)
-#create from 2 to 8 buffers
+#create from 2 to 5 buffers
 #format month as 2 digits
-temp_col_list <- c("trt2", "trt3", "trt4", "trt5", "trt6", "trt7", "trt8","trt9")
+temp_col_list <- c("trt2", "trt3", "trt4", "trt5")
 for(i in temp_col_list)
 {
   #create treatment var for buffers 2-9
@@ -373,220 +378,51 @@ summary(wb_panel$trt4)
 table(wb_panel$trt4)
 table(wb_panel$date_trt4_ym)
 
-#----
-# Robustness Check and other Modeling Variables
-#----
 
-#create placebo treatment variable that turns on 6 months before trt1 and then back to 0
-wb_panel$date_trt1_6mp<-NA
-wb_panel$date_trt1_6mp <- mondate(wb_panel$date_trt1) - 6
-#check that number of cells and dates line up correctly between original and placebo variables
-table(wb_panel$date_trt1)
-table(wb_panel$date_trt1_6mp)
-#check visually for random cells
-wb_panel_6mp <- wb_panel[c("cell_id","date_trt1","date_trt1_6mp")]
-#create 6 month placebo treatment variable using new treatment date
-wb_panel$date_trt1_6mp<-as.Date(wb_panel$date_trt1_6mp)
-wb_panel$date_trt1_6mp_ym<-as.numeric(format(wb_panel$date_trt1_6mp,format="%Y%m"))
-#should only turn on for 6 months prior to actual treatment, then should go back to 0
-wb_panel$trt1_6mp<-NA
-wb_panel$trt1_6mp[which(wb_panel$Month<wb_panel$date_trt1_6mp_ym)]<-0
-wb_panel$trt1_6mp[which(wb_panel$Month>=wb_panel$date_trt1_6mp_ym)]<-1
-wb_panel$trt1_6mp[which(wb_panel$Month>=wb_panel$date_trt1_ym)]<-0
-#check visually for random cells
-wb_panel_6mp <- wb_panel[c("cell_id","Month","date_trt1","date_trt1_6mp","trt1","trt1_6mp")]
+#-------
+# New Vars for Robustness Checks
+#------
+
+
+## create treatment date and distance for road segment that is closest
+x_merged2<-x_merged
+#looking for minimum among dist_trt[1-5] columns, so change col numbers if this position changes
+my.min<-function(x) ifelse (!all(is.na(x)), min(x,na.rm=T),NA)
+x_merged2$dist_trt_nearest <-apply(x_merged2[,32:36],1,my.min)
+#should not have any NAs
+summary(x_merged2$dist_trt_nearest)
+
+#now create date_trt_nearest that assigns ym date associated with trt_nearest column
+for(i in 1:5)
+{
+  x_merged2[["date_trt_near_col"]][x_merged2[["dist_trt_nearest"]]==x_merged2[[paste0("dist_trt",i)]]]<-i
+  #x_merged2[["date_trt_nearest"]][x_merged2[["date_trt_near_col"]]==i]<-x_merged2[[paste0("date_trt",i,"_ym")]][x_merged2[["date_trt_near_col"]]==i]
+  
+}
+#don't know why this doesn't work in loop
+x_merged2[["date_trt_nearest"]][x_merged2[["date_trt_near_col"]]==1]<-x_merged2[[paste("date_trt1_ym")]][x_merged2[["date_trt_near_col"]]==1]
+x_merged2[["date_trt_nearest"]][x_merged2[["date_trt_near_col"]]==2]<-x_merged2[[paste("date_trt2_ym")]][x_merged2[["date_trt_near_col"]]==2]
+x_merged2[["date_trt_nearest"]][x_merged2[["date_trt_near_col"]]==3]<-x_merged2[[paste("date_trt3_ym")]][x_merged2[["date_trt_near_col"]]==3]
+x_merged2[["date_trt_nearest"]][x_merged2[["date_trt_near_col"]]==4]<-x_merged2[[paste("date_trt4_ym")]][x_merged2[["date_trt_near_col"]]==4]
+x_merged2[["date_trt_nearest"]][x_merged2[["date_trt_near_col"]]==5]<-x_merged2[[paste("date_trt5_ym")]][x_merged2[["date_trt_near_col"]]==5]
+
+#cut down to just columns that need to merge into wb_panel
+x_merged2<-x_merged2[,c("cell_id","dist_trt_nearest","date_trt_near_col","date_trt_nearest")]
+wb_panel2<-merge(wb_panel, x_merged2)
+wb_panel<-wb_panel2
+
+#create treatment var that turns to 1 when nearest treatment occurs
+# set trt=1 if month is equal to or after date_treat_ym
+wb_panel$trt_near<-NA
+wb_panel$trt_near[which(wb_panel$Month<wb_panel$date_trt_nearest)]<-0
+wb_panel$trt_near[which(wb_panel$Month>=wb_panel$date_trt_nearest)]<-1
 
 ## -----
 ## Write to file
 ## -----
 
-# Write full version of panel data to file
-write.csv(wb_panel,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_full_750m.csv")
-wb_panel <- read.csv ("/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_full_750m.csv")
 
-#create slim version for analysis
-
-trt<-paste(colnames(wb_panel)[grep("^trt",colnames(wb_panel))])
-col_trt<-paste(colnames(wb_panel)[grep("col_trt",colnames(wb_panel))])
-id<-paste(colnames(wb_panel)[grep("*_id",colnames(wb_panel))])
-date<-paste(colnames(wb_panel)[grep("*date",colnames(wb_panel))])
-dist<-paste(colnames(wb_panel)[grep("*dist",colnames(wb_panel))])
-road<-paste(colnames(wb_panel)[grep("*road",colnames(wb_panel))])
-extra<-c("Month","maxl","meanl","viirs","PCBS_CO","GOVERNORAT")
-
-slimvars<-c(trt,col_trt,id,date,dist,road,extra)
-wb_panel_slim <- wb_panel[slimvars]
-
-## Write slim panel data to file
-
-write.csv(wb_panel_slim,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
-#wb_panel_slim <- read.csv("/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_slim_750m.csv")
-
-
-## Write wb_cells to csv
-write.csv(wb_cells,"Data/wb_cells.csv")
-wb_cells <- read.csv("Data/wb_cells.csv")
-
-## Create shapefile with variable information at cell level and write to file
-# need to rewrite if change anything in wb_cells
-wb_cells_shp<-geojsonio::geojson_read("Data/data_geojsons/road_grid_750_final.geojson",what="sp")
-wb_cells_shp <- merge(wb_cells_shp,wb_cells)
-writePolyShape(wb_cells_shp,"Data/wb_cells_shp.shp")
-
-
-# -------
-# Tables
-# -------
-
-## Summary Stats Table
-
-stargazer(wb_cells, type="html",
-          keep=c("viirs_201204","viirs_201612","dist_trt1","dist_trt2","dist_trt3"))
-
-
-
-
-
-#---------------
-##SCRATCH BEGINS
-#---------------
-
-## Addressing missing viirs for a small number of observations
-## DID NOT end up doing this for final dataset since so few NAs
-#testing how to replace NAs in viirs observations (28 NAs out of 383,553 obs)
-viirsNAs<-wb_panel_slim[is.na(wb_panel_slim$viirs),]
-list_NA<-c(viirsNAs$cell_id)
-
-test<-wb_panel_slim[(wb_panel_slim$cell_id %in% list_NA),]
-test<-test[c(65,141:145)]
-test1<-test %>%
-  group_by(cell_id) %>%
-  fill(viirs, .direction="up") 
-
-# paste in previous value for viirs missing data
-# 28 obs (19 unique cells) missing viirs data for various months, so using value from the closest non-NA following month
-# e.g. if 201502 is missing, then filled with 201503 value
-# see "scratch" section for test code that is easier to check values
-
-test<-wb_panel_slim
-test1<-test %>%
-  group_by(cell_id) %>%
-  fill(viirs, .direction="up")
-summary(wb_panel_slim$viirs)
-summary(test1$viirs)
-wb_panel_slim<-test1
-
-
-
-#x_merged$trt_col<-strsplit(x_merged$date_trt,";")
-#x_merged %>% separate(date_trt,c("trt_date","trt_col"),";")
-
-# x_merged %>% separate(date_trt,c("trt_date","trt_col"),";")
-# before %>%
-#   separate(type, c("foo", "bar"), "_and_")
-# 
-# x_merged$test<-sapply(colnames(x_merged),1,function(name){paste0(name)},simplify=F)
-# x_merged$test<-apply(x_merged[c(29:37)],1,function(x) {paste(names(x_merged))},rev(sort(x,decreasing=TRUE))[1])
-# 
-# x_merged$test<-apply(x_merged[c(29:37)],1,function(x) {paste0(rank(x),sep=",")})
-# 
-# a<-x_merged[29:37]
-# x_merged$test<-paste0(rank(a),sep=",")
-# 
-# 
-# x_merged$trt_col<-
-# df2 <- as.data.frame(sapply(colnames(df),
-#                             function(name){ paste(name,df[,name],sep=", ")},
-#                             simplify=F)
-
-# #loop-ified code to create a variable "trt_col" which contains the number of the treatment columns (1-9)
-# #is usually 1, but date columns are not always in chronological order
-# #for(i in 1:9)
-# #{
-#   x_merged[["trt_col"]][x_merged[["date_trt"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt2_col"]][x_merged[["date_trt2"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt3_col"]][x_merged[["date_trt3"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt4_col"]][x_merged[["date_trt4"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt5_col"]][x_merged[["date_trt5"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt6_col"]][x_merged[["date_trt6"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt7_col"]][x_merged[["date_trt7"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt8_col"]][x_merged[["date_trt8"]] == x_merged[[paste0("date_", i)]]] <- i
-#   x_merged[["trt9_col"]][x_merged[["date_trt9"]] == x_merged[[paste0("date_", i)]]] <- i
-#   
-# #}
-
-
-
-##----
-## QA CHECK PANEL CONSTRUCTION -- repeat if change any of coding inputs
-##---
-
-## check panel construction
-View(wb_panel[1:100])
-View(wb_panel[100:177])
-
-wb_panel_ch <- wb_panel[wb_panel$cell_id<220,]
-ch_vars<-c("cell_id","Month","maxl","meanl","viirs")
-wb_panel_ch <- wb_panel_ch[ch_vars]
-wb_reshape_ch<-wb_reshape[wb_reshape$cell_id<305,]
-View(wb_panel_ch[100:177])
-View(wb_reshape[100:200])
-View(wb_reshape[200:300])
-
-## check that names of one road segment match the names from the buffers input file
-# road_id=17 is Al Menya Landfill and it was the earliest treatment date, so should show up a lot in trt1 columns and use it to check dataset construction
-wb_panel_roads<-wb_panel[wb_panel$Month==201405,]
-road17_ch<-merge(wb_panel_roads, buffers, by.x="id_a", by.y="road_id")
-#number of cells that fall in id_a==17 should match number that fall in road_a=Al Menya Landfill
-table(road17_ch$id_a)
-table(road17_ch$id_a)
-#check summary stats for subset of only road_id=17
-road17_ch<-road17_ch[road17_ch$id_a==17,]
-#should match number of cells from above and should only be equal to 17
-table(road17_ch$id_a)
-#only non-zero value should be in Al Menya Landfill Road
-table(road17_ch$Name)
-#trt1 should all be equal to 1
-table(road17_ch$trt1)
-
-## check that completion dates match the dates from the buffers input file
-#shorten inpii_data to just ids, names, completion date and merge with wb_panel_roads
-inpii_ch<-inpii_data[c(1,10,15:17,98)]
-paneldates_ch<-merge(wb_panel_roads, inpii_ch, by.x="id_a",by.y="road_id")
-#create difference variable, and all values should be equal to zero because date in each column matches
-paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
-table(paneldates_ch$date_ch)
-#double checks that the values actually matter in this construction
-paneldates_ch$ACTUAL_COM<-27
-table(paneldates_ch$ACTUAL_COM)
-paneldates_ch$date_ch<-paneldates_ch$date_a - paneldates_ch$ACTUAL_COM
-table(paneldates_ch$date_ch)
-
-## check treatment var construction using paneldates_ch
-table(paneldates_ch$date_trt1_ym)
-#trt1 should equal 1 for all cells with a trt1_ym before 201406(since used 201405 as cut off to subset wb_panel_roads)
-#when add those cells up, should equal 2,573 equal to 1; 4156 equal to 0
-table(paneldates_ch$trt1)
-
-##check viirs values assigned correctly
-wb_reshape_201405<-wb_reshape[c("cell_id","viirs_201405")]
-panel_ch201405<-merge(wb_panel_roads, wb_reshape_201405)
-panel_ch201405$viirsch<-panel_ch201405$viirs - panel_ch201405$viirs_201405
-#should be 6,729 equal to 0
-table(panel_ch201405$viirsch)
-
-##check maxl values assigned correctly
-wb_panel_201502<-wb_panel[wb_panel$Month==201502,]
-wb_reshape_201502<-wb_reshape[c("cell_id","maxl_201502","meanl_201502")]
-wb_panel_201502<-merge(wb_panel_201502, wb_reshape_201502)
-wb_panel_201502$maxlch<-wb_panel_201502$maxl - wb_panel_201502$maxl_201502
-wb_panel_201502$meanlch<-wb_panel_201502$meanl - wb_panel_201502$meanl_201502
-#should be 6,729 equal to 0
-table(wb_panel_201502$maxlch)
-table(wb_panel_201502$meanlch)
-
-
-
+write.csv(wb_panel,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_750m_near.csv")
 
 
 
