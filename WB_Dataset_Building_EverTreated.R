@@ -423,7 +423,7 @@ wb_panel$trt_near[which(wb_panel$Month>=wb_panel$date_trt_nearest)]<-1
 
 
 write.csv(wb_panel,"/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_750m_near.csv")
-
+wb_panel<-read.csv("/Users/rbtrichler/Box Sync/usaidwestbank_roadsgie/Data/wb_panel_750m_near.csv")
 
 
 
