@@ -377,7 +377,7 @@ table(wb_panel$date_trt4_ym)
 # Robustness Check and other Modeling Variables
 #----
 
-#create placebo treatment variable that turns on 6 months before trt1 and then back to 0
+## create placebo treatment variable that turns on 6 months before trt1 and then back to 0
 wb_panel$date_trt1_6mp<-NA
 wb_panel$date_trt1_6mp <- mondate(wb_panel$date_trt1) - 6
 #check that number of cells and dates line up correctly between original and placebo variables
@@ -395,6 +395,25 @@ wb_panel$trt1_6mp[which(wb_panel$Month>=wb_panel$date_trt1_6mp_ym)]<-1
 wb_panel$trt1_6mp[which(wb_panel$Month>=wb_panel$date_trt1_ym)]<-0
 #check visually for random cells
 wb_panel_6mp <- wb_panel[c("cell_id","Month","date_trt1","date_trt1_6mp","trt1","trt1_6mp")]
+
+## Identify average duration of treatment (Dec 2016 - average month of completion)
+trt1months<-aggregate(wb_panel$trt1, by=list(Category=wb_panel$cell_id),FUN=sum)
+summary(trt1months$x)
+# wb_panel1<-merge(wb_panel,trt1months, by.x="cell_id",by.y="Category")
+# names(wb_panel1)[names(wb_panel1)=="x"]<-"trt1months"
+# wb_panel<-wb_panel1
+
+## Create subset that excludes never treated cells (use 9999 date for trt1)
+wb_panel_trt<-wb_panel[wb_panel$date_trt1_y!=9999,]
+table(wb_panel_trt$date_trt1_y)
+hist(wb_panel_trt$date_trt1_ym)
+# identify average duration of treatment for ever treated cells
+trt1months_ever<-aggregate(wb_panel_trt$trt1, by=list(Category=wb_panel_trt$cell_id),FUN=sum)
+summary(trt1months_ever$x)
+
+## average distance for ever-treated cells
+summary(wb_panel_trt$dist_trt1)
+
 
 ## -----
 ## Write to file
@@ -440,8 +459,11 @@ writePolyShape(wb_cells_shp,"Data/wb_cells_shp.shp")
 
 ## Summary Stats Table
 
-stargazer(wb_cells, type="html",
+# for presentation to West Bank Mission; added other stuff directly in Excel
+stargazer(wb_cells, type="html",median=TRUE, 
           keep=c("viirs_201204","viirs_201612","dist_trt1","dist_trt2","dist_trt3"))
+
+
 
 
 
