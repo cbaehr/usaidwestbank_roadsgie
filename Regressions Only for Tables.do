@@ -29,23 +29,23 @@ outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Mont
 ***********************
 *Model 1
 reghdfe viirs trt1 month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg1000two.doc, append keep(trt1 maxl month) addtext ("Grid cell FEs", Y, "Month FEs", N) 
+outreg2 using myreg1000.doc, append keep(trt1 maxl month) addtext ("Grid cell FEs", Y, "Month FEs", N) 
 
 *Model 2
 reghdfe viirs trt1 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg1000two.doc, append keep(trt1 maxl) addtext ("Grid cell FEs", Y, "Month FEs", N) 
+outreg2 using myreg1000.doc, append keep(trt1 maxl) addtext ("Grid cell FEs", Y, "Month FEs", N) 
 
 *Model 3
 reghdfe viirs trt1 trt2 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg1000two.doc, append keep(trt1 maxl c.trt1##c.dist_trt1) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg1000.doc, append keep(trt1 maxl c.trt1##c.dist_trt1) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 4
 reghdfe viirs trt1 trt2 trt3 i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg1000two.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg1000.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Model 5
 reghdfe viirs trt1##viirscat i.month, cluster(pcbs_co month) absorb(cell_id)
-outreg2 using myreg1000two.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+outreg2 using myreg1000.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 ***Table 3***
 *Use WestBank_Models.do
