@@ -50,19 +50,27 @@ outreg2 using myreg.doc, replace addtext ("Grid cell FEs", Y, "Month FEs", N)
 
 *Final model 2
 reghdfe viirs trt1 i.month, cluster(pcbs_co month) absorb(cell_id)
+est sto model2
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Final model 3
 reghdfe viirs trt1 trt2 i.month, cluster(pcbs_co month) absorb(cell_id)
+est sto model3
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Final model 4
 reghdfe viirs trt1 trt2 trt3 i.month, cluster(pcbs_co month) absorb(cell_id)
+est sto model4
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Final model 5
 reghdfe viirs trt1##viirscat i.month, cluster (pcbs_co month) absorb(cell_id)
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
+
+* Coefficient plots for main regression models for WB Final Report
+coefplot (model2, label (Model 2)) (model3, label(Model 3)) (model4, label (Model 4)), ///
+keep(trt1 trt2 trt3) xline(0) ///
+coeflabels(trt1="Treatment 1" trt2="Treatment 2" trt3="Treatment 3")
 
 ** Recreate regression models with 6 months prior placebo treatment variable
 
