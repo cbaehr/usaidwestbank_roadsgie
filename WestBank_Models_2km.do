@@ -44,11 +44,11 @@ drop if dist_trt1 > 2000
 *Create new variables
 gen trt2_2000 = 0
 replace trt2_2000 = trt2 if dist_trt2 <= 2000
-browse  trt2_2000
+*browse  trt2_2000
 tab trt2_2000
 tab trt2
 tab trt2 if dist_trt2 <= 2000
-gen trt3_2000 = 0
+
 
 gen trt3_2000 = 0
 replace trt3_2000 = trt3 if dist_trt3 <= 2000

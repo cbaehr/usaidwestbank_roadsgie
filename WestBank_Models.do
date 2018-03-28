@@ -17,8 +17,14 @@ destring viirs, force replace
 egen dist_trt1cat = cut(dist_trt1), at (0, 1000, 2000, 3000, 4000, 5000, 6000) icodes
 
 *Binned viirs at month 0 
-bys month cell_id: g viirs_at_m0 = viirs[1]
+bys cell_id (month): gen viirs_at_m0=viirs[1]
+gen viirs_sub=viirs-viirs_at_m0
+*check variable creation, viirs_sub for 201204 should be equal to 0
+sum viirs_sub
+sum viirs_sub if month==201204
+*create categorical variable for baseline
 egen viirscat = cut(viirs_at_m0), group(4) icodes
+
 *sum viirs_at_m0, detail
 *sum viirs_at_m0 if viirscat2==0
 *sum viirs_at_m0 if viirscat2==3
