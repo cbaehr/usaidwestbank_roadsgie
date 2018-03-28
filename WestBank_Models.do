@@ -17,8 +17,14 @@ destring viirs, force replace
 egen dist_trt1cat = cut(dist_trt1), at (0, 1000, 2000, 3000, 4000, 5000, 6000) icodes
 
 *Binned viirs at month 0 
-bys month cell_id: g viirs_at_m0 = viirs[1]
+bys cell_id (month): gen viirs_at_m0=viirs[1]
+gen viirs_sub=viirs-viirs_at_m0
+*check variable creation, viirs_sub for 201204 should be equal to 0
+sum viirs_sub
+sum viirs_sub if month==201204
+*create categorical variable for baseline
 egen viirscat = cut(viirs_at_m0), group(4) icodes
+
 *sum viirs_at_m0, detail
 *sum viirs_at_m0 if viirscat2==0
 *sum viirs_at_m0 if viirscat2==3
@@ -50,19 +56,27 @@ outreg2 using myreg.doc, replace addtext ("Grid cell FEs", Y, "Month FEs", N)
 
 *Final model 2
 reghdfe viirs trt1 i.month, cluster(pcbs_co month) absorb(cell_id)
+est sto model2
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Final model 3
 reghdfe viirs trt1 trt2 i.month, cluster(pcbs_co month) absorb(cell_id)
+est sto model3
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Final model 4
 reghdfe viirs trt1 trt2 trt3 i.month, cluster(pcbs_co month) absorb(cell_id)
+est sto model4
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
 
 *Final model 5
 reghdfe viirs trt1##viirscat i.month, cluster (pcbs_co month) absorb(cell_id)
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
+
+* Coefficient plots for main regression models for WB Final Report
+coefplot (model2, label (Model 2)) (model3, label(Model 3)) (model4, label (Model 4)), ///
+keep(trt1 trt2 trt3) xline(0) ///
+coeflabels(trt1="Treatment 1" trt2="Treatment 2" trt3="Treatment 3")
 
 ** Recreate regression models with 6 months prior placebo treatment variable
 
