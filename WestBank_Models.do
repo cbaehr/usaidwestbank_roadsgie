@@ -17,35 +17,23 @@ destring viirs, force replace
 egen dist_trt1cat = cut(dist_trt1), at (0, 1000, 2000, 3000, 4000, 5000, 6000) icodes
 
 *Binned viirs at month 0 
+*bys month cell_id: gen viirs_at_m0=viirs[1]
+
 bys cell_id (month): gen viirs_at_m0=viirs[1]
 gen viirs_sub=viirs-viirs_at_m0
 *check variable creation, viirs_sub for 201204 should be equal to 0
 sum viirs_sub
 sum viirs_sub if month==201204
+
 *create categorical variable for baseline
 egen viirscat = cut(viirs_at_m0), group(4) icodes
+*check viirs_at_m0 with viirscat
+sum viirs_at_m0, detail
+sum viirs_at_m0 if viirscat==0
+sum viirs_at_m0 if viirscat==3
 
-*sum viirs_at_m0, detail
-*sum viirs_at_m0 if viirscat2==0
-*sum viirs_at_m0 if viirscat2==3
-*Generate minimum distance to road out of trt1 and trt2
-egen mindist = rowmin(dist_trt1-dist_trt2)
-
-*Create trt1 and dist1 only for cells that fall into only 1 buffer (trt1, but no trt2 or trt3)
-*identify cells that fall into only 1 buffer
-gen buffer1_only=0
-replace buffer1_only=1 if date_trt2=="NA"
-*create new trt1 and dist_trt1 variable that is missing if buffer1_only=0 (falls into multiple buffers)
-* allows us to look only at subset of 1 buffer cells for regressions
-gen trt1_only=.
-replace trt1_only=trt1 if buffer1_only==1
-gen dist_trt1_only=.
-replace dist_trt1_only=dist_trt1 if buffer1_only==1
-egen dist_trt1cat_only = cut(dist_trt1_only), at (0, 1000, 2000, 3000, 4000, 5000, 6000) icodes
-
-reghdfe viirs trt1_only#dist_trt1cat_only i.month, cluster (pcbs_co month) absorb(cell_id)
-outreg2 using myreg1a.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
-reghdfe viirs trt1_only#c.dist_trt1_only i.month, cluster (pcbs_co month) absorb(cell_id)
+* create variable for percentage change in nighttime lights
+gen viirs_pct= viirs/viirs_at_m0
 
 * Regressions
 **MAIN REGRESSION MODELS USED FOR MISSION PRESENTATION**
@@ -72,6 +60,11 @@ outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Mont
 *Final model 5
 reghdfe viirs trt1##viirscat i.month, cluster (pcbs_co month) absorb(cell_id)
 outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
+
+*Final model 6
+reghdfe viirs_pct trt1##viirscat i.month, cluster (pcbs_co month) absorb(cell_id)
+outreg2 using myreg.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y)
+
 
 * Coefficient plots for main regression models for WB Final Report
 coefplot (model2, label (Model 2)) (model3, label(Model 3)) (model4, label (Model 4)), ///
@@ -153,3 +146,31 @@ outreg2 using myreg4.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Mon
 *Model 14, or Model 7 less maxl
 reghdfe viirs trt1 trt2 trt3 i.month, cluster(pcbs_co month) absorb(cell_id)
 outreg2 using myreg4.doc, append drop(i.month) addtext ("Grid cell FEs", Y, "Month FEs", Y) 
+
+
+* --------
+* Scratch 
+* Identifying cells that fall into one buffer
+* --------
+
+*Create trt1 and dist1 only for cells that fall into only 1 buffer (trt1, but no trt2 or trt3)
+*identify cells that fall into only 1 buffer
+gen buffer1_only=0
+replace buffer1_only=1 if date_trt2=="NA"
+*create new trt1 and dist_trt1 variable that is missing if buffer1_only=0 (falls into multiple buffers)
+* allows us to look only at subset of 1 buffer cells for regressions
+gen trt1_only=.
+replace trt1_only=trt1 if buffer1_only==1
+gen dist_trt1_only=.
+replace dist_trt1_only=dist_trt1 if buffer1_only==1
+egen dist_trt1cat_only = cut(dist_trt1_only), at (0, 1000, 2000, 3000, 4000, 5000, 6000) icodes
+
+reghdfe viirs trt1_only#dist_trt1cat_only i.month, cluster (pcbs_co month) absorb(cell_id)
+reghdfe viirs trt1_only#c.dist_trt1_only i.month, cluster (pcbs_co month) absorb(cell_id)
+
+*Generate minimum distance to road out of trt1 and trt2
+egen mindist = rowmin(dist_trt1-dist_trt2)
+
+
+
+
